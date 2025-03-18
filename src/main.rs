@@ -80,7 +80,7 @@ fn main() -> Result<()> {
         ])
         .takes_value(false);
 
-    let arg_group = Arg::with_name("round")
+    let arg_round = Arg::with_name("round")
         .long("round")
         .help("rounds the start and end time to the nearest duration. Durations can be in minutes or hours. E.g. 15m or 4h")
         .required(false)
@@ -166,7 +166,7 @@ To get started, view the `start` help with `bartib start --help`")
                 .arg(&arg_yesterday)
                 .arg(&arg_current_week)
                 .arg(&arg_last_week)
-                .arg(&arg_group)
+                .arg(&arg_round)
                 .arg(
                     Arg::with_name("project")
                         .short("p")
@@ -201,7 +201,7 @@ To get started, view the `start` help with `bartib start --help`")
                 .arg(&arg_yesterday)
                 .arg(&arg_current_week)
                 .arg(&arg_last_week)
-                .arg(&arg_group)
+                .arg(&arg_round)
                 .arg(
                     Arg::with_name("project")
                         .short("p")
