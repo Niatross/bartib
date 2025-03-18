@@ -86,6 +86,13 @@ fn main() -> Result<()> {
         .required(false)
         .takes_value(true);
 
+    let arg_group = Arg::with_name("group")
+        .long("group")
+        .short("g")
+        .help("groups the output")
+        .required(false)
+        .takes_value(true);
+
     let arg_description = Arg::with_name("description")
         .short("d")
         .long("description")
@@ -210,7 +217,8 @@ To get started, view the `start` help with `bartib start --help`")
                         .help("do report activities for this project only")
                         .takes_value(true)
                         .required(false),
-                ),
+                )
+                .arg(&arg_group),
         )
         .subcommand(
             SubCommand::with_name("last")
