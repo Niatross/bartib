@@ -7,6 +7,7 @@ use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 use bartib::data::getter::ActivityFilter;
 use bartib::data::processor;
+use bartib::view::report::{ReportGroup, ReportGroupDate, ReportGroupDescription, ReportGroupProject};
 
 #[cfg(windows)]
 use nu_ansi_term::enable_ansi_support;
@@ -360,7 +361,8 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("report", Some(sub_m)) => {
             let filter = create_filter_for_arguments(sub_m);
             let processors = create_processors_for_arguments(sub_m);
-            bartib::controller::report::show_report(file_name, filter, processors)
+            let groups = get_group_argument_or_ignore(sub_m.value_of("group"), "group");
+            bartib::controller::report::show_report(file_name, filter, processors, groups)
         }
         ("projects", Some(sub_m)) => bartib::controller::list::list_projects(
             file_name,
@@ -547,6 +549,23 @@ fn get_duration_argument_or_ignore(
 fn get_group_argument_or_ignore(
     group_argument: Option<&str>,
     argument_name: &str
-) -> Option {
-    
+) -> Option<Vec<ReportGroup>> {
+    let mut groups: Vec<ReportGroup> = Vec::new();
+
+    if let Some(group_string) = group_argument {
+        for char in group_string.as_bytes().to_ascii_lowercase() {
+            match char {
+                'p' => Some(ReportGroupProject),
+                'd' => Some(ReportGroupDescription),
+                'c' => Some(ReportGroupDate),
+                _ => {
+                    println!("{} is not a valid argument for {}", char, argument_name);
+                    None
+                }
+            }
+        }
+    } else {
+        None
+    }
+
 }

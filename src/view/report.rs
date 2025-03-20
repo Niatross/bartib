@@ -65,19 +65,19 @@ pub trait ReportGroup {
     fn return_identifier(&self, activity: &Activity) -> String;
 }
 
-struct ReportGroupDate;
+pub struct ReportGroupDate;
 impl ReportGroup for ReportGroupDate {
     fn return_identifier(&self, activity: &Activity) -> String {
         activity.start.date().to_string()
     }
 }
-struct ReportGroupProject;
+pub struct ReportGroupProject;
 impl ReportGroup for ReportGroupProject {
     fn return_identifier(&self, activity: &Activity) -> String {
         activity.project.to_string()
     }
 }
-struct ReportGroupDescription;
+pub struct ReportGroupDescription;
 impl ReportGroup for ReportGroupDescription {
     fn return_identifier(&self, activity: &Activity) -> String {
         activity.description.to_string()
