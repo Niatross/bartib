@@ -11,16 +11,16 @@ use crate::conf;
 use crate::data::activity::{self, Activity};
 use crate::view::format_util;
 
-type ProjectMap<'a> = BTreeMap<&'a str, ReportEntry>;
+type ProjectMap = BTreeMap<String, ReportEntry>;
 
-struct Report<'a> {
-    project_map: ProjectMap<'a>,
+struct Report {
+    project_map: ProjectMap,
     total_duration: Duration,
 }
 
-struct ReportEntry<'a> {
+struct ReportEntry {
     total_duration: Duration,
-    items: ProjectMap<'a>,
+    items: ProjectMap,
 }
 
 impl<'a> Report<'a> {
@@ -60,6 +60,30 @@ impl<'a> fmt::Display for Report<'a> {
         Ok(())
     }
 }
+
+pub trait ReportGroup {
+    fn return_identifier(&self, activity: &Activity) -> String;
+}
+
+struct ReportGroupDate;
+impl ReportGroup for ReportGroupDate {
+    fn return_identifier(&self, activity: &Activity) -> String {
+        activity.start.date().to_string()
+    }
+}
+struct ReportGroupProject;
+impl ReportGroup for ReportGroupProject {
+    fn return_identifier(&self, activity: &Activity) -> String {
+        activity.project.to_string()
+    }
+}
+struct ReportGroupDescription;
+impl ReportGroup for ReportGroupDescription {
+    fn return_identifier(&self, activity: &Activity) -> String {
+        activity.description.to_string()
+    }
+}
+
 
 pub fn show_activities<'a>(activities: &'a [&'a activity::Activity]) {
     let report = Report::new(activities);
