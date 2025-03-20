@@ -8,14 +8,19 @@ use nu_ansi_term::Style;
 use textwrap;
 
 use crate::conf;
-use crate::data::activity;
+use crate::data::activity::{self, Activity};
 use crate::view::format_util;
 
-type ProjectMap<'a> = BTreeMap<&'a str, (Vec<&'a activity::Activity>, Duration)>;
+type ProjectMap<'a> = BTreeMap<&'a str, ReportEntry>;
 
 struct Report<'a> {
     project_map: ProjectMap<'a>,
     total_duration: Duration,
+}
+
+struct ReportEntry<'a> {
+    total_duration: Duration,
+    items: ProjectMap<'a>,
 }
 
 impl<'a> Report<'a> {
@@ -77,6 +82,14 @@ fn create_project_map<'a>(activities: &'a [&'a activity::Activity]) -> ProjectMa
     }
 
     project_map
+}
+
+fn create_report_map<'a>(activities: &'a [&'a activity::Activity]) -> ProjectMap {
+    let mut report_map: ProjectMap = BTreeMap::new();
+
+    for a in activities {
+        report_map
+    }
 }
 
 pub fn sum_duration(activities: &[&activity::Activity]) -> Duration {
