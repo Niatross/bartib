@@ -8,6 +8,7 @@ use nu_ansi_term::Style;
 use textwrap;
 
 use crate::conf;
+use crate::controller::report;
 use crate::data::activity::{self, Activity};
 use crate::view::format_util;
 
@@ -21,6 +22,15 @@ struct Report {
 struct ReportEntry {
     total_duration: Duration,
     items: ProjectMap,
+}
+
+impl ReportEntry {
+    fn new() -> Self {
+        ReportEntry { 
+            total_duration: Duration::zero(), 
+            items: BTreeMap::new() 
+        }
+    }
 }
 
 impl Report {
@@ -96,7 +106,10 @@ pub fn show_activities<'a>(
     println!("\n{report}");
 }
 
-fn create_project_map<'a>(activities: &'a [&'a activity::Activity]) -> ProjectMap {
+fn create_project_map<'a>(
+    activities: &'a [&'a activity::Activity],
+    groups: Option<Vec<Box<dyn ReportGroup>>>
+) -> ProjectMap {
     let mut project_map: ProjectMap = BTreeMap::new();
 
     for a in activities {
@@ -105,6 +118,36 @@ fn create_project_map<'a>(activities: &'a [&'a activity::Activity]) -> ProjectMa
             .or_insert_with(|| (Vec::<&'a activity::Activity>::new(), Duration::seconds(0)))
             .0
             .push(a);
+
+        match groups {
+            Some(groupList) => {
+                for group in groupList {
+                    let identifier = group.return_identifier(a);
+
+                }
+            },
+            None => panic!("Currently not implemented logic for not having any groups defined")
+        }
+
+    fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
+        let group = &groups[0];
+        let identifier = group.return_identifier(activity);
+        let report_entry = project_map
+                                                .entry(identifier)
+                                                .or_insert_with(|| ReportEntry::new());
+        
+        report_entry.total_duration.add(activity.get_duration());
+
+        match groups.len() {
+            0 => panic!("length of group is {}", groups.len()),
+            1 => return,
+            2.. => recursively_apply_group(project_map, groups, activity),
+        }
+
+                
+        
+    }
+
     }
 
     for (activities, duration) in project_map.values_mut() {
