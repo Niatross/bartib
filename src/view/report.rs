@@ -25,18 +25,17 @@ struct ReportEntry {
 }
 
 impl ReportEntry {
-    fn new(name: &str) -> Self {
+    fn new() -> Self {
         ReportEntry { 
             total_duration: Duration::zero(), 
             items: BTreeMap::new(),
-            name: name,
         }
     }
 }
 
 struct ReportLine {
     indent: usize,
-    name: &str,
+    name: String,
     heading: bool,
     duration: Duration,
 }
@@ -72,7 +71,7 @@ impl Report {
             for (name, entry) in map.iter() {
                 lines.push(
                     ReportLine {
-                        name: name,
+                        name: name.clone(), // TODO there is definitely a better way of doing this!
                         duration: entry.total_duration,
                         heading: false,
                         indent: indent.clone()
@@ -134,7 +133,7 @@ impl<'a> fmt::Display for Report {
             writeln!(f, "{}", line);
         }
 
-        print_total_duration(f, self.total_duration, longest_line)?;
+        // print_total_duration(f, self.total_duration, longest_line)?;
 
         Ok(())
     }
@@ -313,39 +312,39 @@ fn group_activities_by_description<'a>(
     activity_map
 }
 
-fn get_longest_line(project_map: &ProjectMap) -> Option<usize> {
-    let longest_project_line = project_map.keys().map(|p| p.chars().count()).max();
-    let longest_activity_line = project_map
-        .values()
-        .flat_map(|(a, _d)| a)
-        .map(|a| a.description.chars().count() + conf::REPORT_INDENTATION)
-        .max();
-    get_max_option(longest_project_line, longest_activity_line)
-}
+// fn get_longest_line(project_map: &ProjectMap) -> Option<usize> {
+//     let longest_project_line = project_map.keys().map(|p| p.chars().count()).max();
+//     let longest_activity_line = project_map
+//         .values()
+//         .flat_map(|(a, _d)| a)
+//         .map(|a| a.description.chars().count() + conf::REPORT_INDENTATION)
+//         .max();
+//     get_max_option(longest_project_line, longest_activity_line)
+// }
 
-fn get_longest_duration_string(report: &Report) -> Option<usize> {
-    let longest_project_duration = report
-        .project_map
-        .values()
-        .map(|(_a, d)| format_util::format_duration(d))
-        .map(|s| s.chars().count())
-        .max();
-    let longest_activity_duration = report
-        .project_map
-        .values()
-        .flat_map(|(a, _d)| a)
-        .map(|a| format_util::format_duration(&a.get_duration()))
-        .map(|s| s.chars().count())
-        .max();
+// fn get_longest_duration_string(report: &Report) -> Option<usize> {
+//     let longest_project_duration = report
+//         .project_map
+//         .values()
+//         .map(|(_a, d)| format_util::format_duration(d))
+//         .map(|s| s.chars().count())
+//         .max();
+//     let longest_activity_duration = report
+//         .project_map
+//         .values()
+//         .flat_map(|(a, _d)| a)
+//         .map(|a| format_util::format_duration(&a.get_duration()))
+//         .map(|s| s.chars().count())
+//         .max();
 
-    let longest_single_duration =
-        get_max_option(longest_project_duration, longest_activity_duration);
-    let length_of_total_duration = format_util::format_duration(&report.total_duration)
-        .chars()
-        .count();
+//     let longest_single_duration =
+//         get_max_option(longest_project_duration, longest_activity_duration);
+//     let length_of_total_duration = format_util::format_duration(&report.total_duration)
+//         .chars()
+//         .count();
 
-    get_max_option(longest_single_duration, Some(length_of_total_duration))
-}
+//     get_max_option(longest_single_duration, Some(length_of_total_duration))
+// }
 
 fn get_max_option(o1: Option<usize>, o2: Option<usize>) -> Option<usize> {
     if let Some(s1) = o1 {
