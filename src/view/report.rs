@@ -23,8 +23,11 @@ struct ReportEntry {
     items: ProjectMap,
 }
 
-impl<'a> Report<'a> {
-    fn new(activities: &'a [&'a activity::Activity]) -> Report<'a> {
+impl Report {
+    fn new(
+        activities: &[&activity::Activity],
+        groups: Option<Vec<Box<dyn ReportGroup>>>
+    ) -> Report {
         Report {
             project_map: create_project_map(activities),
             total_duration: sum_duration(activities),
@@ -32,7 +35,7 @@ impl<'a> Report<'a> {
     }
 }
 
-impl<'a> fmt::Display for Report<'a> {
+impl<'a> fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut longest_line = get_longest_line(&self.project_map).unwrap_or(0);
         let longest_duration_string = get_longest_duration_string(self).unwrap_or(0);
@@ -85,8 +88,11 @@ impl ReportGroup for ReportGroupDescription {
 }
 
 
-pub fn show_activities<'a>(activities: &'a [&'a activity::Activity]) {
-    let report = Report::new(activities);
+pub fn show_activities<'a>(
+    activities: &'a [&'a activity::Activity],
+    groups: Option<Vec<Box<dyn ReportGroup>>>
+) {
+    let report = Report::new(activities, groups);
     println!("\n{report}");
 }
 

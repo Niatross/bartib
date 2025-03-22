@@ -549,7 +549,7 @@ fn get_duration_argument_or_ignore(
 fn get_group_argument_or_ignore(
     group_argument: Option<&str>,
     argument_name: &str
-) -> Option<Vec<ReportGroup>> {
+) -> Option<Vec<Box<ReportGroup>>> {
     let mut groups: Vec<ReportGroup> = Vec::new();
 
     if let Some(group_string) = group_argument {
