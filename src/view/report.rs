@@ -25,13 +25,30 @@ struct ReportEntry {
 }
 
 impl ReportEntry {
-    fn new() -> Self {
+    fn new(name: &str) -> Self {
         ReportEntry { 
             total_duration: Duration::zero(), 
-            items: BTreeMap::new() 
+            items: BTreeMap::new(),
+            name: name,
         }
     }
 }
+
+struct ReportLine {
+    indent: usize,
+    name: &str,
+    heading: bool,
+    duration: Duration,
+}
+
+impl fmt::Display for ReportLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+
+        writeln!(f, "{}{}{}", "", self.name, self.duration.to_string())
+
+    }
+}
+
 
 impl Report {
     fn new(
@@ -43,29 +60,78 @@ impl Report {
             total_duration: sum_duration(activities),
         }
     }
+
+    fn return_report_lines(&self) -> Vec<ReportLine> {
+        let mut lines: Vec<ReportLine> = Vec::new();
+        let mut indent: usize = 0;
+        
+        recursively_return_lines(&self.project_map, &mut lines, indent);
+
+        fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLine>, indent: usize) {
+
+            for (name, entry) in map.iter() {
+                lines.push(
+                    ReportLine {
+                        name: name,
+                        duration: entry.total_duration,
+                        heading: false,
+                        indent: indent.clone()
+                    }
+                );
+
+                recursively_return_lines(map, lines, indent.clone() + 1);
+            }
+
+        }
+
+        lines
+
+    }
+
+    // fn recursively_return_str_repr(&self, seed: Option<String>) -> String {
+    //     let mut seed_str: String;
+    //     match seed {
+    //         Some(val) => seed_str = val,
+    //         None => seed_str = String::new()
+    //     };
+
+    //     let child_str = for (entry_name, entry) in self.project_map.iter() {
+    //         seed_str.push_str(format!("{}\t{}\n{}", self.name, self.total_duration.to_string(), recursively_return_str_repr(seed)));
+    //     };
+
+    //     return format!("{}\n{}\t{}\n{}",seed_str, self)
+
+
+
+    // }
 }
 
 impl<'a> fmt::Display for Report {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut longest_line = get_longest_line(&self.project_map).unwrap_or(0);
-        let longest_duration_string = get_longest_duration_string(self).unwrap_or(0);
+        // let mut longest_line = get_longest_line(&self.project_map).unwrap_or(0);
+        // let longest_duration_string = get_longest_duration_string(self).unwrap_or(0);
 
-        let terminal_width = term_size::dimensions_stdout().map_or(conf::DEFAULT_WIDTH, |d| d.0);
+        // let terminal_width = term_size::dimensions_stdout().map_or(conf::DEFAULT_WIDTH, |d| d.0);
 
-        if terminal_width < longest_line + longest_duration_string + 1 {
-            longest_line = terminal_width - longest_duration_string - 1;
-        }
+        // if terminal_width < longest_line + longest_duration_string + 1 {
+        //     longest_line = terminal_width - longest_duration_string - 1;
+        // }
 
-        for (project, (activities, duration)) in &self.project_map {
-            print_project_heading(f, project, duration, longest_line, longest_duration_string)?;
+        // for (project, (activities, duration)) in &self.project_map {
+        //     print_project_heading(f, project, duration, longest_line, longest_duration_string)?;
 
-            print_descriptions_with_durations(
-                f,
-                activities,
-                longest_line,
-                longest_duration_string,
-            )?;
-            writeln!(f)?;
+        //     print_descriptions_with_durations(
+        //         f,
+        //         activities,
+        //         longest_line,
+        //         longest_duration_string,
+        //     )?;
+        //     writeln!(f)?;
+        // }
+
+        let lines = self.return_report_lines();
+        for line in lines {
+            writeln!(f, "{}", line);
         }
 
         print_total_duration(f, self.total_duration, longest_line)?;
