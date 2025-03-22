@@ -113,18 +113,10 @@ fn create_project_map<'a>(
     let mut project_map: ProjectMap = BTreeMap::new();
 
     for a in activities {
-        project_map
-            .entry(&a.project)
-            .or_insert_with(|| (Vec::<&'a activity::Activity>::new(), Duration::seconds(0)))
-            .0
-            .push(a);
 
         match groups {
-            Some(groupList) => {
-                for group in groupList {
-                    let identifier = group.return_identifier(a);
-
-                }
+            Some(group_list) => {
+                recursively_apply_group(&mut project_map, &group_list, a);
             },
             None => panic!("Currently not implemented logic for not having any groups defined")
         }
@@ -141,11 +133,9 @@ fn create_project_map<'a>(
         match groups.len() {
             0 => panic!("length of group is {}", groups.len()),
             1 => return,
-            2.. => recursively_apply_group(project_map, groups, activity),
+            2.. => recursively_apply_group(project_map, &groups[1..], activity),
         }
 
-                
-        
     }
 
     }
