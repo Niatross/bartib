@@ -39,7 +39,7 @@ impl Report {
         groups: Option<Vec<Box<dyn ReportGroup>>>
     ) -> Report {
         Report {
-            project_map: create_project_map(activities),
+            project_map: create_project_map(activities, groups),
             total_duration: sum_duration(activities),
         }
     }
@@ -114,46 +114,35 @@ fn create_project_map<'a>(
 
     for a in activities {
 
-        match groups {
+        match &groups {
             Some(group_list) => {
                 recursively_apply_group(&mut project_map, &group_list, a);
             },
             None => panic!("Currently not implemented logic for not having any groups defined")
         }
 
-    fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
-        let group = &groups[0];
-        let identifier = group.return_identifier(activity);
-        let report_entry = project_map
-                                                .entry(identifier)
-                                                .or_insert_with(|| ReportEntry::new());
-        
-        report_entry.total_duration.add(activity.get_duration());
+        fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
+            let group = &groups[0];
+            let identifier = group.return_identifier(activity);
+            let report_entry = project_map
+                                                    .entry(identifier)
+                                                    .or_insert_with(|| ReportEntry::new());
+            
+            report_entry.total_duration.add(activity.get_duration());
 
-        match groups.len() {
-            0 => panic!("length of group is {}", groups.len()),
-            1 => return,
-            2.. => recursively_apply_group(project_map, &groups[1..], activity),
+            match groups.len() {
+                0 => panic!("length of group is {}", groups.len()),
+                1 => return,
+                2.. => recursively_apply_group(project_map, &groups[1..], activity),
+            }
+
         }
 
-    }
-
-    }
-
-    for (activities, duration) in project_map.values_mut() {
-        *duration = sum_duration(activities);
     }
 
     project_map
 }
 
-fn create_report_map<'a>(activities: &'a [&'a activity::Activity]) -> ProjectMap {
-    let mut report_map: ProjectMap = BTreeMap::new();
-
-    for a in activities {
-        report_map
-    }
-}
 
 pub fn sum_duration(activities: &[&activity::Activity]) -> Duration {
     let mut duration = Duration::seconds(0);
