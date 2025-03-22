@@ -550,20 +550,20 @@ fn get_group_argument_or_ignore(
     group_argument: Option<&str>,
     argument_name: &str
 ) -> Option<Vec<Box<ReportGroup>>> {
-    let mut groups: Vec<ReportGroup> = Vec::new();
+    let mut groups: Vec<Box<dyn ReportGroup>> = Vec::new();
 
     if let Some(group_string) = group_argument {
         for char in group_string.as_bytes().to_ascii_lowercase() {
             match char {
-                'p' => Some(ReportGroupProject),
-                'd' => Some(ReportGroupDescription),
-                'c' => Some(ReportGroupDate),
-                _ => {
-                    println!("{} is not a valid argument for {}", char, argument_name);
-                    None
+                b'p' => groups.push(Box::new(ReportGroupProject)),
+                b'd' => groups.push(Box::new(ReportGroupDescription)),
+                b'c' => groups.push(Box::new(ReportGroupDate)),
+                _ => {panic!("{} is not a valid argument for {}", char, argument_name);
+                    
                 }
             }
         }
+        Some(groups)
     } else {
         None
     }
