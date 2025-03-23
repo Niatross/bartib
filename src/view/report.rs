@@ -194,11 +194,11 @@ fn create_project_map<'a>(
             
             report_entry.total_duration.add(activity.get_duration());
 
-            match groups.len() {
-                0 => panic!("length of group is {}", groups.len()),
-                1 => return,
-                2.. => recursively_apply_group(project_map, &groups[1..], activity),
-            }
+        match groups.len() {
+            0 => panic!("length of group is {}", groups.len()),
+            1 => return,
+            2.. => recursively_apply_group(&mut report_entry.items, &groups[1..], activity),
+        }
 
         }
 
