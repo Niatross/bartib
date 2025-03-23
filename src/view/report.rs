@@ -77,7 +77,7 @@ impl Report {
                     ReportLine {
                         name: name.clone(), // TODO there is definitely a better way of doing this!
                         duration: entry.total_duration,
-                        heading: entry.items.is_empty(),
+                        heading: !entry.items.is_empty(), //Consider the entry a heading if it doesn't contain any items
                         indent: indent.clone()
                     }
                 );
@@ -137,7 +137,12 @@ impl<'a> fmt::Display for Report {
 
 
         for line in lines {
-            writeln!(f, "{}", line.as_string(&longest_line_info));
+            let style = if line.heading {
+                Style::new().bold()
+            } else {
+                Style::new()
+            };
+            writeln!(f, "{}", style.paint(line.as_string(&longest_line_info)))?;
         }
 
         // print_total_duration(f, self.total_duration, longest_line)?;
