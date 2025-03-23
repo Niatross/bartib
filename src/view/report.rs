@@ -43,7 +43,7 @@ struct ReportLine {
 impl fmt::Display for ReportLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        write!(f, "{}\t{}\t{}", self.indent, self.name, format_util::format_duration(&self.duration)) //TODO need to add indentation
+        write!(f, "{}\t{}\t{}", "\t".repeat(self.indent), self.name, format_util::format_duration(&self.duration))
 
     }
 }
