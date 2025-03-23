@@ -320,15 +320,9 @@ fn group_activities_by_description<'a>(
     activity_map
 }
 
-// fn get_longest_line(project_map: &ProjectMap) -> Option<usize> {
-//     let longest_project_line = project_map.keys().map(|p| p.chars().count()).max();
-//     let longest_activity_line = project_map
-//         .values()
-//         .flat_map(|(a, _d)| a)
-//         .map(|a| a.description.chars().count() + conf::REPORT_INDENTATION)
-//         .max();
-//     get_max_option(longest_project_line, longest_activity_line)
-// }
+fn get_longest_line(lines: &[ReportLine]) -> Option<usize> {
+    lines.iter().map(|line| String::from(line).chars().count()).max()
+}
 
 // fn get_longest_duration_string(report: &Report) -> Option<usize> {
 //     let longest_project_duration = report
