@@ -42,17 +42,14 @@ struct ReportLine {
     duration: Duration,
 }
 
-impl fmt::Display for ReportLine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-
-        write!(f, "{}", String::from(self))
-
-    }
-}
-
-impl From<&ReportLine> for String {
-    fn from(value: &ReportLine) -> Self {
-        format!("{}\t{}\t{}", " ".repeat(value.indent), value.name, format_util::format_duration(&value.duration))
+impl ReportLine {
+    fn as_string(&self, longest_line_info: &LongestLineInfo) -> String {
+        format!("{indent}{name:.<name_width$}\t{duration:>duration_width$}",
+            indent=" ".repeat(self.indent*2),
+            name=self.name,
+            duration=format_util::format_duration(&self.duration),
+            duration_width=longest_line_info.duration,
+            name_width=longest_line_info.name)
     }
 }
 
@@ -80,7 +77,7 @@ impl Report {
                     ReportLine {
                         name: name.clone(), // TODO there is definitely a better way of doing this!
                         duration: entry.total_duration,
-                        heading: false,
+                        heading: entry.items.is_empty(),
                         indent: indent.clone()
                     }
                 );
@@ -136,11 +133,11 @@ impl<'a> fmt::Display for Report {
         // }
 
         let lines = self.return_report_lines();
-        let longest_line = get_longest_line(&lines).unwrap_or(0);
+        let longest_line_info = get_longest_line_info(&lines);
 
 
         for line in lines {
-            writeln!(f, "{}", line);
+            writeln!(f, "{}", line.as_string(&longest_line_info));
         }
 
         // print_total_duration(f, self.total_duration, longest_line)?;
@@ -331,7 +328,7 @@ struct LongestLineInfo {
 }
 
 fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
-    let longest_name = lines.iter().map(|line| line.name.chars().count()).max().unwrap_or(0);
+    let longest_name = lines.iter().map(|line| line.name.chars().count() + line.indent).max().unwrap_or(0);
     let longest_duration = lines.iter().map(|line| format_duration(&line.duration).chars().count()).max().unwrap_or(0);
 
     LongestLineInfo { name: longest_name, duration: longest_duration }
