@@ -43,7 +43,7 @@ struct ReportLine {
 impl fmt::Display for ReportLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        writeln!(f, "{}{}{}", "", self.name, self.duration.to_string())
+        write!(f, "{}{}\t{}", "", self.name, self.duration.to_string()) //TODO need to add indentation
 
     }
 }
@@ -62,9 +62,8 @@ impl Report {
 
     fn return_report_lines(&self) -> Vec<ReportLine> {
         let mut lines: Vec<ReportLine> = Vec::new();
-        let mut indent: usize = 0;
         
-        recursively_return_lines(&self.project_map, &mut lines, indent);
+        recursively_return_lines(&self.project_map, &mut lines, 0);
 
         fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLine>, indent: usize) {
 
