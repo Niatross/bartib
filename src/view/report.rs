@@ -12,6 +12,8 @@ use crate::controller::report;
 use crate::data::activity::{self, Activity};
 use crate::view::format_util;
 
+use super::format_util::format_duration;
+
 type ProjectMap = BTreeMap<String, ReportEntry>;
 
 struct Report {
@@ -134,6 +136,9 @@ impl<'a> fmt::Display for Report {
         // }
 
         let lines = self.return_report_lines();
+        let longest_line = get_longest_line(&lines).unwrap_or(0);
+
+
         for line in lines {
             writeln!(f, "{}", line);
         }
@@ -320,8 +325,16 @@ fn group_activities_by_description<'a>(
     activity_map
 }
 
-fn get_longest_line(lines: &[ReportLine]) -> Option<usize> {
-    lines.iter().map(|line| String::from(line).chars().count()).max()
+struct LongestLineInfo {
+    name: usize,
+    duration: usize,
+}
+
+fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
+    let longest_name = lines.iter().map(|line| line.name.chars().count()).max().unwrap_or(0);
+    let longest_duration = lines.iter().map(|line| format_duration(&line.duration).chars().count()).max().unwrap_or(0);
+
+    LongestLineInfo { name: longest_name, duration: longest_duration }
 }
 
 // fn get_longest_duration_string(report: &Report) -> Option<usize> {
