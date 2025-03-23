@@ -174,6 +174,25 @@ fn create_project_map<'a>(
     activities: &'a [&'a activity::Activity],
     groups: Option<Vec<Box<dyn ReportGroup>>>
 ) -> ProjectMap {
+
+    fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
+        let group = &groups[0];
+        let identifier = group.return_identifier(activity);
+        let report_entry = project_map
+                                                .entry(identifier)
+                                                .or_insert_with(|| ReportEntry::new());
+        
+        report_entry.total_duration = report_entry.total_duration.add(activity.get_duration());
+
+    match groups.len() {
+        0 => panic!("length of group is {}", groups.len()),
+        1 => return,
+        2.. => recursively_apply_group(&mut report_entry.items, &groups[1..], activity),
+    }
+
+    }
+
+
     let mut project_map: ProjectMap = BTreeMap::new();
 
     for a in activities {
@@ -185,26 +204,10 @@ fn create_project_map<'a>(
             None => panic!("Currently not implemented logic for not having any groups defined")
         }
 
-        fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
-            let group = &groups[0];
-            let identifier = group.return_identifier(activity);
-            let report_entry = project_map
-                                                    .entry(identifier)
-                                                    .or_insert_with(|| ReportEntry::new());
-            
-            report_entry.total_duration = report_entry.total_duration.add(activity.get_duration());
-
-        match groups.len() {
-            0 => panic!("length of group is {}", groups.len()),
-            1 => return,
-            2.. => recursively_apply_group(&mut report_entry.items, &groups[1..], activity),
-        }
-
-        }
-
     }
 
     project_map
+    
 }
 
 
