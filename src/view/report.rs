@@ -43,8 +43,14 @@ struct ReportLine {
 impl fmt::Display for ReportLine {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
-        write!(f, "{}\t{}\t{}", "\t".repeat(self.indent), self.name, format_util::format_duration(&self.duration))
+        write!(f, "{}", String::from(self))
 
+    }
+}
+
+impl From<&ReportLine> for String {
+    fn from(value: &ReportLine) -> Self {
+        format!("{}\t{}\t{}", " ".repeat(value.indent), value.name, format_util::format_duration(&value.duration))
     }
 }
 
