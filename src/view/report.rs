@@ -78,7 +78,7 @@ impl Report {
                     }
                 );
 
-                recursively_return_lines(map, lines, indent.clone() + 1);
+                recursively_return_lines(&entry.items, lines, indent.clone() + 1);
             }
 
         }
