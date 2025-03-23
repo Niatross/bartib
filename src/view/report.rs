@@ -192,7 +192,7 @@ fn create_project_map<'a>(
                                                     .entry(identifier)
                                                     .or_insert_with(|| ReportEntry::new());
             
-            report_entry.total_duration.add(activity.get_duration());
+            report_entry.total_duration = report_entry.total_duration.add(activity.get_duration());
 
         match groups.len() {
             0 => panic!("length of group is {}", groups.len()),
