@@ -90,7 +90,7 @@ fn main() -> Result<()> {
     let arg_group = Arg::with_name("group")
         .long("group")
         .short("g")
-        .help("groups the output")
+        .help("Takes any combination of the following characters and groups the report with in the order sepecified\np - Project\nc - Calendar (Date)\nd - Description")
         .required(false)
         .takes_value(true);
 
