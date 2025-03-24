@@ -370,10 +370,28 @@ struct LongestLineInfo {
     duration: usize,
 }
 
-fn get_longest_line_info(lines: &[ReportLineItem]) -> LongestLineInfo {
-    let longest_name = lines.iter().map(|line| line.name.chars().count() + line.indent).max().unwrap_or(0);
-    let longest_duration = lines.iter().map(|line| format_duration(&line.duration).chars().count()).max().unwrap_or(0);
+fn return_name_len(line: &ReportLine) -> usize {
+    if let ReportLine::Item(item) = line {
+        item.name.chars().count() + item.indent
+    } else {
+        0
+    }
+}
 
+fn return_duration_len(line: &ReportLine) -> usize {
+    if let ReportLine::Item(item) = line {
+        format_duration(&item.duration).chars().count()
+    } else {
+        0
+    }
+}
+
+fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
+    let longest_name = lines.iter().map(|line| return_name_len(line)).max().unwrap_or(0);
+    let longest_duration = lines.iter().map(|line| return_duration_len(line)).max().unwrap_or(0);
+
+ 
+    
     LongestLineInfo { name: longest_name, duration: longest_duration }
 }
 
