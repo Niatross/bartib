@@ -15,6 +15,7 @@ use crate::view::format_util;
 use super::format_util::format_duration;
 
 type ProjectMap = BTreeMap<String, ReportEntry>;
+type ReportLines = Vec<ReportLine>;
 
 struct Report {
     project_map: ProjectMap,
@@ -35,14 +36,54 @@ impl ReportEntry {
     }
 }
 
-struct ReportLine {
+enum ReportLine {
+    Item(ReportLineItem),
+    Separator
+}
+
+impl ReportLine {
+
+    fn new_report_line(
+        indent: usize,
+        name: String,
+        heading: bool,
+        duration: Duration) -> Self {
+            ReportLine::Item(ReportLineItem {
+                indent: indent,
+                name: name,
+                heading: heading,
+                duration: duration
+            })
+    }
+
+    fn new_separator() -> Self {
+        Self::Separator
+    }
+
+    fn write_line(&self, f: &mut Formatter, longest_line_info: &LongestLineInfo) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Item(line) => {
+                let style = if line.heading {
+                    Style::new().bold()
+                } else {
+                    Style::new()
+                };
+                writeln!(f, "{}", style.paint(line.as_string(longest_line_info)))
+            },
+            Self::Separator => writeln!(f)
+        }
+    }
+
+}
+
+struct ReportLineItem {
     indent: usize,
     name: String,
     heading: bool,
     duration: Duration,
 }
 
-impl ReportLine {
+impl ReportLineItem {
     fn as_string(&self, longest_line_info: &LongestLineInfo) -> String {
         format!("{indent}{name:.<name_width$}\t{duration:>duration_width$}",
             indent=" ".repeat(self.indent*2),
@@ -65,24 +106,33 @@ impl Report {
         }
     }
 
-    fn return_report_lines(&self) -> Vec<ReportLine> {
-        let mut lines: Vec<ReportLine> = Vec::new();
+    fn return_report_lines(&self) -> ReportLines {
+        let mut lines: ReportLines = Vec::new();
         
         recursively_return_lines(&self.project_map, &mut lines, 0);
 
-        fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLine>, indent: usize) {
+        fn recursively_return_lines(map: &ProjectMap, lines: &mut ReportLines, indent: usize) {
 
             for (name, entry) in map.iter() {
                 lines.push(
-                    ReportLine {
-                        name: name.clone(), // TODO there is definitely a better way of doing this!
-                        duration: entry.total_duration,
-                        heading: !entry.items.is_empty(), //Consider the entry a heading if it doesn't contain any items
-                        indent: indent.clone()
-                    }
+                    ReportLine::new_report_line(
+                        indent.clone(), //TODO Remove clones
+                        name.clone(),
+                        !entry.items.is_empty(), //Consider the line a heading if the map doesn't contain any items
+                        entry.total_duration)
                 );
 
                 recursively_return_lines(&entry.items, lines, indent.clone() + 1);
+            }
+
+            // add a separator after every entry in the top level group
+            // println!("{}", indent);
+            //TODO work out why there is only ever one instance of indent 0.
+            //This suggests that the first level only contains one item which might be an indication that something else is wrong
+            if 1 <= indent && indent <= 2 {
+                lines.push(
+                    ReportLine::new_separator()
+                );
             }
 
         }
@@ -137,12 +187,7 @@ impl<'a> fmt::Display for Report {
 
 
         for line in lines {
-            let style = if line.heading {
-                Style::new().bold()
-            } else {
-                Style::new()
-            };
-            writeln!(f, "{}", style.paint(line.as_string(&longest_line_info)))?;
+            line.write_line(f, &longest_line_info)?;
         }
 
         // print_total_duration(f, self.total_duration, longest_line)?;
@@ -332,10 +377,28 @@ struct LongestLineInfo {
     duration: usize,
 }
 
-fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
-    let longest_name = lines.iter().map(|line| line.name.chars().count() + line.indent).max().unwrap_or(0);
-    let longest_duration = lines.iter().map(|line| format_duration(&line.duration).chars().count()).max().unwrap_or(0);
+fn return_name_len(line: &ReportLine) -> usize {
+    if let ReportLine::Item(item) = line {
+        item.name.chars().count() + item.indent
+    } else {
+        0
+    }
+}
 
+fn return_duration_len(line: &ReportLine) -> usize {
+    if let ReportLine::Item(item) = line {
+        format_duration(&item.duration).chars().count()
+    } else {
+        0
+    }
+}
+
+fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
+    let longest_name = lines.iter().map(|line| return_name_len(line)).max().unwrap_or(0);
+    let longest_duration = lines.iter().map(|line| return_duration_len(line)).max().unwrap_or(0);
+
+ 
+    
     LongestLineInfo { name: longest_name, duration: longest_duration }
 }
 
