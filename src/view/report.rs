@@ -15,6 +15,7 @@ use crate::view::format_util;
 use super::format_util::format_duration;
 
 type ProjectMap = BTreeMap<String, ReportEntry>;
+type ReportLines = Vec<ReportLine>;
 
 struct Report {
     project_map: ProjectMap,
@@ -59,6 +60,13 @@ impl ReportLine {
         Self::Separator
     }
 
+    fn write_line(&self, f: &mut Formatter, longest_line_info: &LongestLineInfo) -> Result<(), std::fmt::Error> {
+        match self {
+            Self::Item(line) => writeln!(f, "{}", line.as_string(longest_line_info)),
+            Self::Separator => writeln!(f)
+        }
+    }
+
 }
 
 struct ReportLineItem {
@@ -91,25 +99,29 @@ impl Report {
         }
     }
 
-    fn return_report_lines(&self) -> Vec<ReportLineItem> {
-        let mut lines: Vec<ReportLineItem> = Vec::new();
+    fn return_report_lines(&self) -> ReportLines {
+        let mut lines: ReportLines = Vec::new();
         
         recursively_return_lines(&self.project_map, &mut lines, 0);
 
-        fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLineItem>, indent: usize) {
+        fn recursively_return_lines(map: &ProjectMap, lines: &mut ReportLines, indent: usize) {
 
             for (name, entry) in map.iter() {
                 lines.push(
-                    ReportLineItem {
-                        name: name.clone(), // TODO there is definitely a better way of doing this!
-                        duration: entry.total_duration,
-                        heading: !entry.items.is_empty(), //Consider the entry a heading if it doesn't contain any items
-                        indent: indent.clone()
-                    }
+                    ReportLine::new_report_line(
+                        indent.clone(), //TODO Remove clones
+                        name.clone(),
+                        !entry.items.is_empty(), //Consider the line a heading if the map doesn't contain any items
+                        entry.total_duration)
                 );
 
                 recursively_return_lines(&entry.items, lines, indent.clone() + 1);
             }
+
+            // add a separator after every level
+            lines.push(
+                ReportLine::new_separator()
+            );
 
         }
 
