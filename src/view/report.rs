@@ -35,14 +35,40 @@ impl ReportEntry {
     }
 }
 
-struct ReportLine {
+enum ReportLine {
+    Item(ReportLineItem),
+    Separator
+}
+
+impl ReportLine {
+
+    fn new_report_line(
+        indent: usize,
+        name: String,
+        heading: bool,
+        duration: Duration) -> Self {
+            ReportLine::Item(ReportLineItem {
+                indent: indent,
+                name: name,
+                heading: heading,
+                duration: duration
+            })
+    }
+
+    fn new_separator() -> Self {
+        Self::Separator
+    }
+
+}
+
+struct ReportLineItem {
     indent: usize,
     name: String,
     heading: bool,
     duration: Duration,
 }
 
-impl ReportLine {
+impl ReportLineItem {
     fn as_string(&self, longest_line_info: &LongestLineInfo) -> String {
         format!("{indent}{name:.<name_width$}\t{duration:>duration_width$}",
             indent=" ".repeat(self.indent*2),
@@ -65,16 +91,16 @@ impl Report {
         }
     }
 
-    fn return_report_lines(&self) -> Vec<ReportLine> {
-        let mut lines: Vec<ReportLine> = Vec::new();
+    fn return_report_lines(&self) -> Vec<ReportLineItem> {
+        let mut lines: Vec<ReportLineItem> = Vec::new();
         
         recursively_return_lines(&self.project_map, &mut lines, 0);
 
-        fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLine>, indent: usize) {
+        fn recursively_return_lines(map: &ProjectMap, lines: &mut Vec<ReportLineItem>, indent: usize) {
 
             for (name, entry) in map.iter() {
                 lines.push(
-                    ReportLine {
+                    ReportLineItem {
                         name: name.clone(), // TODO there is definitely a better way of doing this!
                         duration: entry.total_duration,
                         heading: !entry.items.is_empty(), //Consider the entry a heading if it doesn't contain any items
@@ -332,7 +358,7 @@ struct LongestLineInfo {
     duration: usize,
 }
 
-fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
+fn get_longest_line_info(lines: &[ReportLineItem]) -> LongestLineInfo {
     let longest_name = lines.iter().map(|line| line.name.chars().count() + line.indent).max().unwrap_or(0);
     let longest_duration = lines.iter().map(|line| format_duration(&line.duration).chars().count()).max().unwrap_or(0);
 
