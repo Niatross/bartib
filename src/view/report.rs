@@ -62,7 +62,14 @@ impl ReportLine {
 
     fn write_line(&self, f: &mut Formatter, longest_line_info: &LongestLineInfo) -> Result<(), std::fmt::Error> {
         match self {
-            Self::Item(line) => writeln!(f, "{}", line.as_string(longest_line_info)),
+            Self::Item(line) => {
+                let style = if line.heading {
+                    Style::new().bold()
+                } else {
+                    Style::new()
+                };
+                writeln!(f, "{}", style.paint(line.as_string(longest_line_info)))
+            },
             Self::Separator => writeln!(f)
         }
     }
@@ -175,12 +182,7 @@ impl<'a> fmt::Display for Report {
 
 
         for line in lines {
-            let style = if line.heading {
-                Style::new().bold()
-            } else {
-                Style::new()
-            };
-            writeln!(f, "{}", style.paint(line.as_string(&longest_line_info)))?;
+            line.write_line(f, &longest_line_info)?;
         }
 
         // print_total_duration(f, self.total_duration, longest_line)?;
