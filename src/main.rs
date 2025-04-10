@@ -361,7 +361,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("report", Some(sub_m)) => {
             let filter = create_filter_for_arguments(sub_m);
             let processors = create_processors_for_arguments(sub_m);
-            let groups = get_group_argument_or_ignore(sub_m.value_of("group"), "group");
+            let groups = get_group_argument_or_pd(sub_m.value_of("group"), "group");
             bartib::controller::report::show_report(file_name, filter, processors, groups)
         }
         ("projects", Some(sub_m)) => bartib::controller::list::list_projects(
@@ -546,10 +546,10 @@ fn get_duration_argument_or_ignore(
     }
 }
 
-fn get_group_argument_or_ignore(
+fn get_group_argument_or_pd(
     group_argument: Option<&str>,
     argument_name: &str
-) -> Option<Vec<Box<ReportGroup>>> {
+) -> Vec<Box<dyn ReportGroup>> {
     let mut groups: Vec<Box<dyn ReportGroup>> = Vec::new();
 
     if let Some(group_string) = group_argument {
@@ -563,9 +563,9 @@ fn get_group_argument_or_ignore(
                 }
             }
         }
-        Some(groups)
+        groups
     } else {
-        None
+        vec![Box::new(ReportGroupProject), Box::new(ReportGroupDescription)]
     }
 
 }

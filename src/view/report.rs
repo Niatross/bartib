@@ -98,7 +98,7 @@ impl ReportLineItem {
 impl Report {
     fn new(
         activities: &[&activity::Activity],
-        groups: Option<Vec<Box<dyn ReportGroup>>>
+        groups: Vec<Box<dyn ReportGroup>>
     ) -> Report {
         Report {
             project_map: create_project_map(activities, groups),
@@ -222,7 +222,7 @@ impl ReportGroup for ReportGroupDescription {
 
 pub fn show_activities<'a>(
     activities: &'a [&'a activity::Activity],
-    groups: Option<Vec<Box<dyn ReportGroup>>>
+    groups: Vec<Box<dyn ReportGroup>>
 ) {
     let report = Report::new(activities, groups);
     println!("\n{report}");
@@ -230,7 +230,7 @@ pub fn show_activities<'a>(
 
 fn create_project_map<'a>(
     activities: &'a [&'a activity::Activity],
-    groups: Option<Vec<Box<dyn ReportGroup>>>
+    groups: Vec<Box<dyn ReportGroup>>
 ) -> ProjectMap {
 
     fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
@@ -254,14 +254,7 @@ fn create_project_map<'a>(
     let mut project_map: ProjectMap = BTreeMap::new();
 
     for a in activities {
-
-        match &groups {
-            Some(group_list) => {
-                recursively_apply_group(&mut project_map, &group_list, a);
-            },
-            None => panic!("Currently not implemented logic for not having any groups defined")
-        }
-
+        recursively_apply_group(&mut project_map, &groups, a);
     }
 
     project_map
