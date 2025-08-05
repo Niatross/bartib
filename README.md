@@ -23,6 +23,7 @@ Bartib is an easy to use time tracking tool for the command line. It saves a log
       - [Via homebrew](#via-homebrew)
       - [Via apk (Alpine Linux)](#via-apk-alpine-linux)
     - [How to build Bartib](#how-to-build-bartib)
+      - [Precision](#precision)
     - [How to define in which file to save the log of your activities](#how-to-define-in-which-file-to-save-the-log-of-your-activities)
     - [How to edit or delete tracked activities](#how-to-edit-or-delete-tracked-activities)
     - [How to activate auto completion](#how-to-activate-auto-completion)
@@ -186,6 +187,14 @@ Bartib is written in rust. You may build it yourself with the help of cargo. Jus
 cargo build --release
 ```
 
+#### Precision
+
+By default, Bartib records timestamps in minutes. If you would like to record timestamps with second precision, you can enable the `second-precision` feature:
+
+```bash
+cargo build --features=second-precision --release
+```
+
 ### How to define in which file to save the log of your activities
 
 You may either specify the absolute path to your log as an extra parameter (`--file` or `-f`) to your bartib command:
@@ -214,6 +223,8 @@ Bartib offers a simple auto completion for project names. This saves you from ty
 
 For fish users, add the [misc/bartib.fish](misc/bartib.fish) to either the `~/.config/fish/completions/` or `~/.local/share/fish/vendor_completions.d/` directory.
 Currently, you must set the `BARTIB_FILE` in your fish shell for the project and description names completions.
+
+For zsh users, the `misc/_bartib` file can be used for completions.
 
 ## Command overview
 
