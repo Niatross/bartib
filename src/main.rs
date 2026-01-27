@@ -348,6 +348,8 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
                 .map(|t| Local::now().date_naive().and_time(t));
 
+            let continue_prev = sub_m.is_present("continue");
+
             bartib::controller::manipulation::stop(file_name, time)
         }
         ("cancel", Some(_)) => bartib::controller::manipulation::cancel(file_name),
