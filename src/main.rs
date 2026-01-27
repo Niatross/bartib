@@ -100,6 +100,13 @@ fn main() -> Result<()> {
         .help("the project to which the new activity belongs")
         .takes_value(true);
 
+    let arg_continue = Arg::with_name("continue")
+    .short("c")
+    .long("continue")
+    .value_name("CONTINUE")
+    .help("applies the command and then restarts the currently active activity at the current time")
+    .requires("time");
+
     let matches = App::new("bartib")
         .version(crate_version!())
         .author("Nikolas Schmidt-Voigt <nikolas.schmidt-voigt@posteo.de>")
@@ -121,7 +128,8 @@ To get started, view the `start` help with `bartib start --help`")
                 .about("starts a new activity")
                 .arg(arg_project.clone().required(true))
                 .arg(arg_description.clone().required(true))
-                .arg(&arg_time),
+                .arg(&arg_time)
+            .arg(&arg_continue),
         )
         .subcommand(
             SubCommand::with_name("continue")
@@ -148,7 +156,8 @@ To get started, view the `start` help with `bartib start --help`")
         .subcommand(
             SubCommand::with_name("stop")
                 .about("stops all currently running activities")
-                .arg(&arg_time),
+                .arg(&arg_time)
+             .arg(&arg_continue) ,
         )
         .subcommand(
             SubCommand::with_name("cancel").about("cancels all currently running activities"),
