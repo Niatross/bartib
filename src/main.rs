@@ -106,7 +106,8 @@ fn main() -> Result<()> {
     .long("continue")
     .value_name("CONTINUE")
     .help("applies the command and then restarts the currently active activity at the current time")
-    .requires("time");
+    .requires("time")
+    .takes_value(false);
 
     let matches = App::new("bartib")
         .version(crate_version!())
