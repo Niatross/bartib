@@ -1,14 +1,12 @@
-use chrono::Duration;
 use chrono::NaiveDate;
 use nu_ansi_term::Color;
 use std::collections::BTreeMap;
 
-
 use crate::conf;
 use crate::data::activity;
 use crate::view::format_util;
-use crate::view::table;
 use crate::view::report;
+use crate::view::table;
 
 // displays a table with activities
 pub fn list_activities(activities: &[&activity::Activity], with_start_dates: bool) {
@@ -78,8 +76,15 @@ fn create_activities_group(title: &str, activities: &[&activity::Activity]) -> t
         .collect();
 
     let total_duration = report::sum_duration(activities);
-    
-    table::Group::new(Some(format!("{}\t{}",title.to_string(), format_util::format_duration(&total_duration))), rows)
+
+    table::Group::new(
+        Some(format!(
+            "{}\t{}",
+            title,
+            format_util::format_duration(&total_duration)
+        )),
+        rows,
+    )
 }
 
 // displays a table with running activities (no end time)
@@ -176,7 +181,7 @@ pub fn list_descriptions_and_projects_with_index(
 fn get_activity_table_row(activity: &activity::Activity, with_start_dates: bool) -> table::Row {
     let more_then_one_day = activity
         .end
-        .map_or(false, |end| activity.start.date() != end.date());
+        .is_some_and(|end| activity.start.date() != end.date());
 
     let display_end = activity.end.map_or_else(
         || "-".to_string(),

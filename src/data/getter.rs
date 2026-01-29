@@ -99,7 +99,7 @@ pub fn filter_activities<'a>(
         .filter(move |activity| {
             filter
                 .project
-                .map_or(true, |p| WildMatch::new(p).matches(&activity.project))
+                .is_none_or(|p| WildMatch::new(p).matches(&activity.project))
         })
         .collect()
 }

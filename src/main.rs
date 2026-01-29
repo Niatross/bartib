@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use anyhow::{bail, Context, Result};
+use bartib::controller::manipulation::return_continue_current_activity_closure;
 use bartib::view::status::StatusReport;
 use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
@@ -108,6 +109,14 @@ fn main() -> Result<()> {
         .help("the project to which the new activity belongs")
         .takes_value(true);
 
+    let arg_continue = Arg::with_name("continue")
+    .short("c")
+    .long("continue")
+    .value_name("CONTINUE")
+    .help("applies the command and then restarts the currently active activity at the current time")
+    .requires("time")
+    .takes_value(false);
+
     let matches = App::new("bartib")
         .version(crate_version!())
         .author("Nikolas Schmidt-Voigt <nikolas.schmidt-voigt@posteo.de>")
@@ -129,7 +138,8 @@ To get started, view the `start` help with `bartib start --help`")
                 .about("starts a new activity")
                 .arg(arg_project.clone().required(true))
                 .arg(arg_description.clone().required(true))
-                .arg(&arg_time),
+                .arg(&arg_time)
+            .arg(&arg_continue),
         )
         .subcommand(
             SubCommand::with_name("continue")
@@ -156,7 +166,8 @@ To get started, view the `start` help with `bartib start --help`")
         .subcommand(
             SubCommand::with_name("stop")
                 .about("stops all currently running activities")
-                .arg(&arg_time),
+                .arg(&arg_time)
+             .arg(&arg_continue) ,
         )
         .subcommand(
             SubCommand::with_name("cancel").about("cancels all currently running activities"),
@@ -308,12 +319,20 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
                 .map(|t| Local::now().date_naive().and_time(t));
 
+            let continue_closure = return_continue_current_activity_closure(&file_name);
+
             bartib::controller::manipulation::start(
                 file_name,
                 project_name,
                 activity_description,
                 time,
-            )
+            )?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("change", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
@@ -348,7 +367,15 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
                 .map(|t| Local::now().date_naive().and_time(t));
 
-            bartib::controller::manipulation::stop(file_name, time)
+            let continue_closure = return_continue_current_activity_closure(&file_name);
+
+            bartib::controller::manipulation::stop(file_name, time)?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("cancel", Some(_)) => bartib::controller::manipulation::cancel(file_name),
         ("current", Some(_)) => bartib::controller::list::list_running(file_name),

@@ -355,8 +355,8 @@ fn print_total_duration(
 
 fn group_activities_by_description<'a>(
     activities: &'a [&'a activity::Activity],
-) -> BTreeMap<&str, Vec<&'a activity::Activity>> {
-    let mut activity_map: BTreeMap<&str, Vec<&'a activity::Activity>> = BTreeMap::new();
+) -> BTreeMap<&'a str, Vec<&'a activity::Activity>> {
+    let mut activity_map: BTreeMap<&'a str, Vec<&'a activity::Activity>> = BTreeMap::new();
 
     for a in activities {
         activity_map.entry(&a.description).or_default().push(a);
