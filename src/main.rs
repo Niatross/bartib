@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .short("t")
         .long("time")
         .value_name("TIME")
-        .help("the time for changing the activity status (HH:MM)")
+        .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM)")
         .takes_value(true);
 
     let arg_from_date = Arg::with_name("from_date")
