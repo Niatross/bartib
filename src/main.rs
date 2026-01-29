@@ -310,12 +310,20 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
                 .map(|t| Local::now().date_naive().and_time(t));
 
+            let continue_closure = return_continue_current_activity_closure(&file_name);
+
             bartib::controller::manipulation::start(
                 file_name,
                 project_name,
                 activity_description,
                 time,
-            )
+            )?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("change", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
