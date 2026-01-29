@@ -492,7 +492,18 @@ fn get_time_argument_or_ignore(
     argument_name: &str,
 ) -> Option<NaiveTime> {
     if let Some(time_string) = time_argument {
-        let parsing_result = NaiveTime::parse_from_str(time_string, bartib::conf::FORMAT_TIME);
+        let mut time_string = String::from(time_string);
+
+        if !time_string.contains(":") && time_string.len() >= 3 {
+            // The time does not contain a colon, but might still be a valid time
+            // add a colon before the minutes
+            // this assumes that the time is provided in either HHMM or HMM
+            // a single digit for minutes is not supported, nor handled
+            time_string.insert(time_string.len() - 2, ':');
+        }
+
+        let parsing_result =
+            NaiveTime::parse_from_str(&time_string.as_str(), bartib::conf::FORMAT_TIME);
 
         match parsing_result {
             Ok(date) => Some(date),
@@ -547,11 +558,29 @@ mod tests {
     #[test]
     fn test_parse_time() {
         assert_eq!(get_time_argument_or_ignore(Some(""), "argument_name"), None);
+
         assert_eq!(
             get_time_argument_or_ignore(Some("10:00"), "argument_name"),
             Some(NaiveTime::from_str("10:00").unwrap())
         );
+
         assert!(get_time_argument_or_ignore(Some("jkhkj"), "argument_name").is_none());
+
         assert!(get_time_argument_or_ignore(None, "argument_name").is_none());
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("1000"), "argument_name"),
+            Some(NaiveTime::from_str("10:00").unwrap())
+        );
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("900"), "argument_name"),
+            Some(NaiveTime::from_str("09:00").unwrap())
+        );
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("9:00"), "argument_name"),
+            Some(NaiveTime::from_str("09:00").unwrap())
+        );
     }
 }
