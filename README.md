@@ -236,6 +236,8 @@ All these commands require that you have set the `BARTIB_FILE` environment varia
 bartib -h    # get help
 bartib start -p "name of the project" -d "description of the activity"    # start a new activity
 bartib stop    # stop an activity
+bartib stop -t 10:00   # stop an activity at 10:00
+bartib stop -t 10:00 -c   # stop the current activity at 10:00, and then restart (continue) it at the current time
 bartib list --today    # list all activities of the current day
 bartib report --today    # create a report for today
 ```
