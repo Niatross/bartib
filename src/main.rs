@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 
 use anyhow::{bail, Context, Result};
+use bartib::controller::manipulation::return_continue_current_activity_closure;
 use bartib::view::status::StatusReport;
 use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
@@ -348,9 +349,15 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
                 .map(|t| Local::now().date_naive().and_time(t));
 
-            let continue_prev = sub_m.is_present("continue");
+            let continue_closure = return_continue_current_activity_closure(&file_name);
 
-            bartib::controller::manipulation::stop(file_name, time)
+            bartib::controller::manipulation::stop(file_name, time)?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("cancel", Some(_)) => bartib::controller::manipulation::cancel(file_name),
         ("current", Some(_)) => bartib::controller::list::list_running(file_name),

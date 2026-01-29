@@ -4,6 +4,7 @@ use std::process::Command;
 
 use crate::conf;
 use crate::data::activity;
+use crate::data::activity::Activity;
 use crate::data::bartib_file;
 use crate::data::getter;
 use crate::data::getter::get_running_activities;
@@ -180,26 +181,31 @@ pub fn continue_last_activity(
 
 pub fn return_continue_current_activity_closure(
     file_name: &str,
-) -> Result<Box<dyn Fn() -> Result<()>>> {
+) -> Result<Box<dyn Fn() -> Result<()> + '_>> {
     let file_content = bartib_file::get_file_content(&file_name)?;
 
     let current_activities = get_running_activities(&file_content);
 
-    let continue_closure: Box<dyn Fn() -> Result<()>>  = match current_activities.len() {
-        0 => Box::new(|| -> Result<()> {println!("There is no activity currently running to restart");
-        Ok(())}),
-        1 => Box::new(||  
-            start(
-                file_name,
-                &current_activities[0].project,
-                &current_activities[0].description,
-                None,
-            )),
-            _ => return bail!("Using the continue flag only supports situations where there is currently a single activity running")
-        };
-    
+    let closure: Box<dyn Fn() -> Result<()> + '_> = match current_activities.len() {
+        0 => Box::new(|| -> Result<()> {
+            println!("There is no activity currently running to restart");
+            Ok(())
+        }),
+        1 => {
+            let activity = current_activities[0].clone();
+            Box::new(move || {
+                start(
+                    file_name,
+                    &activity.project,
+                    &activity.description,
+                    None,
+                )
+            })
+        },
+        _ => return bail!("Using the continue flag only supports situations where there is currently a single activity running"),
+    };
 
-    Ok(continue_closure)
+    Ok(closure)
 }
 
 pub fn start_editor(file_name: &str, optional_editor_command: Option<&str>) -> Result<()> {
