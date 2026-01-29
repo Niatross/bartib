@@ -535,3 +535,23 @@ fn get_duration_argument_or_ignore(
         None
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use chrono::NaiveTime;
+
+    use crate::get_time_argument_or_ignore;
+
+    #[test]
+    fn test_parse_time() {
+        assert_eq!(get_time_argument_or_ignore(Some(""), "argument_name"), None);
+        assert_eq!(
+            get_time_argument_or_ignore(Some("10:00"), "argument_name"),
+            Some(NaiveTime::from_str("10:00").unwrap())
+        );
+        assert!(get_time_argument_or_ignore(Some("jkhkj"), "argument_name").is_none());
+        assert!(get_time_argument_or_ignore(None, "argument_name").is_none());
+    }
+}
