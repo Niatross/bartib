@@ -3,7 +3,7 @@ use std::borrow::Borrow;
 use anyhow::{bail, Context, Result};
 use bartib::controller::manipulation::return_continue_current_activity_closure;
 use bartib::view::status::StatusReport;
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime};
+use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 use bartib::data::getter::ActivityFilter;
@@ -24,7 +24,8 @@ fn main() -> Result<()> {
         .long("time")
         .value_name("TIME")
         .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM)")
-        .takes_value(true);
+        .takes_value(true)
+        .allow_hyphen_values(true);
 
     let arg_from_date = Arg::with_name("from_date")
         .long("from")
@@ -539,8 +540,42 @@ fn get_time_argument_or_ignore(
             time_string.insert(time_string.len() - 2, ':');
         }
 
+        // build an optional closure if the user has entered a relative time
+        let current_time = Utc::now().naive_utc().time(); // TODO should this be naive UTC or naive local?!!!
+        let relative_time_closure: Option<Box<dyn Fn(NaiveTime) -> NaiveTime>> =
+            if time_string.starts_with('-') {
+                Some(Box::new(|time: NaiveTime| {
+                    current_time + Duration::seconds(time.num_seconds_from_midnight() as i64 * -1)
+                }))
+            } else if time_string.starts_with('+') {
+                Some(Box::new(|time: NaiveTime| {
+                    current_time + Duration::seconds(time.num_seconds_from_midnight() as i64)
+                }))
+            } else {
+                None
+            };
+
+        // if there is a relative time enclosure, it means the user has entered a relative time
+        // remove the +/- prefix to allow subsequent time parsing to proceed
+        match relative_time_closure {
+            Some(_) => {
+                time_string.remove(0);
+                ()
+            }
+            None => (),
+        }
+
+        // parse the user entered time
         let parsing_result =
-            NaiveTime::parse_from_str(&time_string.as_str(), bartib::conf::FORMAT_TIME);
+            NaiveTime::parse_from_str(&time_string.as_str(), bartib::conf::FORMAT_TIME).map(
+                |time| {
+                    if let Some(relative_time_closure) = relative_time_closure {
+                        relative_time_closure(time)
+                    } else {
+                        time
+                    }
+                },
+            );
 
         match parsing_result {
             Ok(date) => Some(date),
@@ -612,7 +647,7 @@ fn get_group_argument_or_pd(
 mod tests {
     use std::str::FromStr;
 
-    use chrono::NaiveTime;
+    use chrono::{Duration, DurationRound, NaiveDateTime, NaiveTime, Utc};
 
     use crate::get_time_argument_or_ignore;
 
@@ -643,5 +678,16 @@ mod tests {
             get_time_argument_or_ignore(Some("9:00"), "argument_name"),
             Some(NaiveTime::from_str("09:00").unwrap())
         );
+
+        let approx_current_time = Utc::now().naive_utc().time();
+        let time_delta = Duration::hours(1);
+        let target_time = approx_current_time + time_delta;
+        assert_eq!(
+            get_time_argument_or_ignore(Some("+1:00"), "argument_name")
+                .unwrap()
+                .signed_duration_since(target_time)
+                .num_seconds(),
+            0i64
+        )
     }
 }
