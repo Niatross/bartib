@@ -22,7 +22,8 @@ fn main() -> Result<()> {
         .long("time")
         .value_name("TIME")
         .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM)")
-        .takes_value(true);
+        .takes_value(true)
+        .allow_hyphen_values(true);
 
     let arg_from_date = Arg::with_name("from_date")
         .long("from")
