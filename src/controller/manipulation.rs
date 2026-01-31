@@ -193,16 +193,13 @@ pub fn return_continue_current_activity_closure(
         }),
         1 => {
             let activity = current_activities[0].clone();
-            Box::new(move || {
-                start(
-                    file_name,
-                    &activity.project,
-                    &activity.description,
-                    None,
-                )
-            })
-        },
-        _ => return bail!("Using the continue flag only supports situations where there is currently a single activity running"),
+            Box::new(move || start(file_name, &activity.project, &activity.description, None))
+        }
+        _ => {
+            return Err(anyhow!(
+                "The continue flag does not support multiple activties running at once"
+            ))
+        }
     };
 
     Ok(closure)
