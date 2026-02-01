@@ -618,15 +618,28 @@ mod tests {
             Some(NaiveTime::from_str("09:00").unwrap())
         );
 
-        let approx_current_time = Local::now().naive_local().time();
-        let time_delta = Duration::hours(1);
-        let target_time = approx_current_time + time_delta;
-        assert_eq!(
-            get_time_argument_or_ignore(Some("+1:00"), "argument_name")
-                .unwrap()
-                .signed_duration_since(target_time)
-                .num_seconds(),
-            0i64
-        )
+        let relative_time_tests = [
+            ("+1:00", Duration::hours(1), true),
+            ("-1:00", Duration::hours(1), false),
+            ("+1:30", Duration::seconds(5400), true),
+        ];
+
+        for test in relative_time_tests {
+            let approx_current_time = Local::now().naive_local().time();
+            let time_delta = test.1;
+            let target_time;
+            if test.2 {
+                target_time = approx_current_time + time_delta;
+            } else {
+                target_time = approx_current_time - time_delta;
+            }
+            assert_eq!(
+                get_time_argument_or_ignore(Some(test.0), "argument_name")
+                    .unwrap()
+                    .signed_duration_since(target_time)
+                    .num_seconds(),
+                0i64
+            )
+        }
     }
 }
