@@ -211,3 +211,46 @@ fn stop_all_running_activities(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
+
+    use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+    use temp_dir::TempDir;
+
+    use crate::data::bartib_file::get_file_content;
+
+    #[test]
+    fn test_change() {
+        let temp_dir = TempDir::new().unwrap();
+        let temp_file = PathBuf::from(temp_dir.path()).join("temp.txt");
+        let temp_file_str = temp_file.to_str().unwrap();
+
+        for i in 1..100 {
+            let project = format!("proj{i}");
+            let description = format!("desc{i}");
+            super::start(temp_file_str, project.as_str(), description.as_str(), None).unwrap();
+            super::stop(temp_file_str, None).unwrap();
+        }
+
+        super::start(&temp_file_str, "test_proj", "test_desc", None).unwrap();
+
+        let target_time = NaiveDateTime::new(
+            NaiveDate::from_isoywd_opt(2026, 10, chrono::Weekday::Mon).unwrap(),
+            NaiveTime::from_str("10:00").unwrap(),
+        );
+
+        let mut original_file_contents = get_file_content(&temp_file_str).unwrap();
+        original_file_contents.pop();
+
+        super::change(temp_file_str, None, None, Some(target_time)).unwrap();
+
+        let mut file_contents = get_file_content(&temp_file_str).unwrap();
+
+        let changed_activity = file_contents.pop().unwrap().activity.unwrap();
+
+        assert_eq!(&changed_activity.start, &target_time);
+        assert_eq!(original_file_contents, file_contents);
+    }
+}

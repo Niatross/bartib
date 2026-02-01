@@ -6,14 +6,14 @@ use std::str::FromStr;
 
 use crate::data::activity;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum LineStatus {
     Unchanged,
     Changed,
 }
 
 // a line in a bartib file
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Line {
     // the plaintext of the line as it has been read from the file
     // we save this to be able write untouched lines back to file without changing them
