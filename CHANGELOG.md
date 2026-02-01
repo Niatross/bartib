@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subcommand `search` to search the list of last activities for terms (thanks to [@Pyxels](https://github.com/Pyxels))
 - Subcommand `status` to display the total duration of activities today, in the current week and in the current month (thanks to [@airenas](https://github.com/airenas))
 - Option `--no-quotes` to `project` to suppres quotes in the projects list (thanks to [@defigli](https://github.com/defigli))
+- Option `--continue` used to automatically continue the currently running activity after applying the subcommand [@Niatross](https://github.com/Niatross))
 
 ### Changed
 
