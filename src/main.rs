@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .short("t")
         .long("time")
         .value_name("TIME")
-        .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM)")
+        .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM. Decimal hours are also accepted)")
         .takes_value(true)
         .allow_hyphen_values(true);
 
