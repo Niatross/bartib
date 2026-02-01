@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update of libc:musl to support longarch64 (thanks to [@zhaixiaojuan](https://github.com/zhaixiaojuan))
 - Improved general `--help` output (thanks to [@RossBarnie](https://github.com/RossBarnie))
+- Report command now accepts a --group argument which generates a hierachial output based upon project, description and date
 
 ## [1.1.0] - 2024-02-29
 
