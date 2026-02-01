@@ -107,7 +107,7 @@ impl Report {
         fn recursively_return_lines(map: &ProjectMap, lines: &mut ReportLines, indent: usize) {
             for (name, entry) in map.iter() {
                 lines.push(ReportLine::new_report_line(
-                    indent.clone(), //TODO Remove clones
+                    indent.clone(),
                     name.clone(),
                     !entry.items.is_empty(), //Consider the line a heading if the map doesn't contain any items
                     entry.total_duration,
