@@ -285,6 +285,7 @@ bartib report --from 2021-09-01 --to 2021-09-05    # create a report for a given
 bartib report --project "The most exciting project"    # create a report for a given project
 bartib report --project "Maint?nance *"    # use '?' and '*' as wildcards in project names
 bartib report --round 15m # rounds the start and end time to the nearest duration. Durations can be in minutes or hours. E.g. 15m or 4h
+bartib report -g pd # Generates a hiearchial report grouped by project and then description
 
 bartib list    # list all activities grouped by day
 bartib list --no_grouping    # list all activities but do not group them by day

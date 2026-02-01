@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved general `--help` output (thanks to [@RossBarnie](https://github.com/RossBarnie))
 - The details argument is optional and defaults to "" [@Niatross](https://github.com/Niatross))
 - time argument accepts the following formats: HHMM, HMM, decimal hours and relative hours to the current time [@Niatross](https://github.com/Niatross))
+- Report command now accepts a --group argument which generates a hierachial output based upon project, description and date (thanks to[@Niatross](https://github.com/Niatross))
 
 ## [1.1.0] - 2024-02-29
 
