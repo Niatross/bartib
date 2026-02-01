@@ -2,7 +2,7 @@ use std::borrow::Borrow;
 
 use anyhow::{anyhow, bail, Context, Result};
 use bartib::view::status::StatusReport;
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
+use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 use bartib::data::getter::ActivityFilter;
@@ -555,7 +555,7 @@ fn get_time_argument_or_ignore(
 
         match parsing_result {
             Ok(date) => Ok(Some(date)),
-            Err(parsing_error) => Err(anyhow!(
+            Err(_parsing_error) => Err(anyhow!(
                 "Can not parse \"{time_string}\" as time. Argument for {argument_name}"
             )),
         }
