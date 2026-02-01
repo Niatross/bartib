@@ -101,7 +101,8 @@ fn main() -> Result<()> {
         .long("description")
         .value_name("DESCRIPTION")
         .help("the description of the new activity")
-        .takes_value(true);
+        .takes_value(true)
+        .default_value("");
 
     let arg_project = Arg::with_name("project")
         .short("p")
