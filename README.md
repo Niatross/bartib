@@ -255,6 +255,8 @@ bartib start -p "The name of the associated project" -d "A description of the ac
 
 bartib stop    # Stop the currently running activity
 bartib stop -t 14:00    # Stop the currently running activity at a given time
+bartib stop -t -1.5    # Stops the currently running activity 1.5 hours ago
+bartib stop -t +1.00    # Stops the currently running activity 1 hour in the future
 
 bartib last    # Print a list of the ten most recently used projects and descriptions
 bartib last -n 25   # Prints a list of recently used projects and descriptions with more entries
