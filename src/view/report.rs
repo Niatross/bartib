@@ -116,8 +116,6 @@ impl Report {
                 recursively_return_lines(&entry.items, lines, indent.clone() + 1);
             }
 
-            //TODO work out why there is only ever one instance of indent 0.
-            //This suggests that the first level only contains one item which might be an indication that something else is wrong
             if 1 <= indent && indent <= 2 {
                 lines.push(ReportLine::new_separator());
             }
