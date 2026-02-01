@@ -22,6 +22,7 @@ struct Report {
     total_duration: Duration,
 }
 
+#[derive(Debug)]
 struct ReportEntry {
     total_duration: Duration,
     items: ProjectMap,
@@ -29,8 +30,8 @@ struct ReportEntry {
 
 impl ReportEntry {
     fn new() -> Self {
-        ReportEntry { 
-            total_duration: Duration::zero(), 
+        ReportEntry {
+            total_duration: Duration::zero(),
             items: BTreeMap::new(),
         }
     }
@@ -38,29 +39,28 @@ impl ReportEntry {
 
 enum ReportLine {
     Item(ReportLineItem),
-    Separator
+    Separator,
 }
 
 impl ReportLine {
-
-    fn new_report_line(
-        indent: usize,
-        name: String,
-        heading: bool,
-        duration: Duration) -> Self {
-            ReportLine::Item(ReportLineItem {
-                indent: indent,
-                name: name,
-                heading: heading,
-                duration: duration
-            })
+    fn new_report_line(indent: usize, name: String, heading: bool, duration: Duration) -> Self {
+        ReportLine::Item(ReportLineItem {
+            indent: indent,
+            name: name,
+            heading: heading,
+            duration: duration,
+        })
     }
 
     fn new_separator() -> Self {
         Self::Separator
     }
 
-    fn write_line(&self, f: &mut Formatter, longest_line_info: &LongestLineInfo) -> Result<(), std::fmt::Error> {
+    fn write_line(
+        &self,
+        f: &mut Formatter,
+        longest_line_info: &LongestLineInfo,
+    ) -> Result<(), std::fmt::Error> {
         match self {
             Self::Item(line) => {
                 let style = if line.heading {
@@ -69,11 +69,10 @@ impl ReportLine {
                     Style::new()
                 };
                 writeln!(f, "{}", style.paint(line.as_string(longest_line_info)))
-            },
-            Self::Separator => writeln!(f)
+            }
+            Self::Separator => writeln!(f),
         }
     }
-
 }
 
 struct ReportLineItem {
@@ -85,21 +84,19 @@ struct ReportLineItem {
 
 impl ReportLineItem {
     fn as_string(&self, longest_line_info: &LongestLineInfo) -> String {
-        format!("{indent}{name:.<name_width$}\t{duration:>duration_width$}",
-            indent=" ".repeat(self.indent*2),
-            name=self.name,
-            duration=format_util::format_duration(&self.duration),
-            duration_width=longest_line_info.duration,
-            name_width=longest_line_info.name)
+        format!(
+            "{indent}{name:.<name_width$}\t{duration:>duration_width$}",
+            indent = " ".repeat(self.indent * 2),
+            name = self.name,
+            duration = format_util::format_duration(&self.duration),
+            duration_width = longest_line_info.duration,
+            name_width = longest_line_info.name
+        )
     }
 }
 
-
 impl Report {
-    fn new(
-        activities: &[&activity::Activity],
-        groups: Vec<Box<dyn ReportGroup>>
-    ) -> Report {
+    fn new(activities: &[&activity::Activity], groups: Vec<Box<dyn ReportGroup>>) -> Report {
         Report {
             project_map: create_project_map(activities, groups),
             total_duration: sum_duration(activities),
@@ -108,19 +105,17 @@ impl Report {
 
     fn return_report_lines(&self) -> ReportLines {
         let mut lines: ReportLines = Vec::new();
-        
+
         recursively_return_lines(&self.project_map, &mut lines, 0);
 
         fn recursively_return_lines(map: &ProjectMap, lines: &mut ReportLines, indent: usize) {
-
             for (name, entry) in map.iter() {
-                lines.push(
-                    ReportLine::new_report_line(
-                        indent.clone(), //TODO Remove clones
-                        name.clone(),
-                        !entry.items.is_empty(), //Consider the line a heading if the map doesn't contain any items
-                        entry.total_duration)
-                );
+                lines.push(ReportLine::new_report_line(
+                    indent.clone(), //TODO Remove clones
+                    name.clone(),
+                    !entry.items.is_empty(), //Consider the line a heading if the map doesn't contain any items
+                    entry.total_duration,
+                ));
 
                 recursively_return_lines(&entry.items, lines, indent.clone() + 1);
             }
@@ -130,15 +125,11 @@ impl Report {
             //TODO work out why there is only ever one instance of indent 0.
             //This suggests that the first level only contains one item which might be an indication that something else is wrong
             if 1 <= indent && indent <= 2 {
-                lines.push(
-                    ReportLine::new_separator()
-                );
+                lines.push(ReportLine::new_separator());
             }
-
         }
 
         lines
-
     }
 
     // fn recursively_return_str_repr(&self, seed: Option<String>) -> String {
@@ -153,8 +144,6 @@ impl Report {
     //     };
 
     //     return format!("{}\n{}\t{}\n{}",seed_str, self)
-
-
 
     // }
 }
@@ -184,7 +173,6 @@ impl<'a> fmt::Display for Report {
 
         let lines = self.return_report_lines();
         let longest_line_info = get_longest_line_info(&lines);
-
 
         for line in lines {
             line.write_line(f, &longest_line_info)?;
@@ -219,10 +207,9 @@ impl ReportGroup for ReportGroupDescription {
     }
 }
 
-
 pub fn show_activities<'a>(
     activities: &'a [&'a activity::Activity],
-    groups: Vec<Box<dyn ReportGroup>>
+    groups: Vec<Box<dyn ReportGroup>>,
 ) {
     let report = Report::new(activities, groups);
     println!("\n{report}");
@@ -230,26 +217,27 @@ pub fn show_activities<'a>(
 
 fn create_project_map<'a>(
     activities: &'a [&'a activity::Activity],
-    groups: Vec<Box<dyn ReportGroup>>
+    groups: Vec<Box<dyn ReportGroup>>,
 ) -> ProjectMap {
-
-    fn recursively_apply_group(project_map: &mut ProjectMap, groups: &[Box<ReportGroup>], activity: &Activity) {
+    fn recursively_apply_group(
+        project_map: &mut ProjectMap,
+        groups: &[Box<ReportGroup>],
+        activity: &Activity,
+    ) {
         let group = &groups[0];
         let identifier = group.return_identifier(activity);
         let report_entry = project_map
-                                                .entry(identifier)
-                                                .or_insert_with(|| ReportEntry::new());
-        
+            .entry(identifier)
+            .or_insert_with(|| ReportEntry::new());
+
         report_entry.total_duration = report_entry.total_duration.add(activity.get_duration());
 
-    match groups.len() {
-        0 => panic!("length of group is {}", groups.len()),
-        1 => return,
-        2.. => recursively_apply_group(&mut report_entry.items, &groups[1..], activity),
+        match groups.len() {
+            0 => panic!("length of group is {}", groups.len()),
+            1 => return,
+            2.. => recursively_apply_group(&mut report_entry.items, &groups[1..], activity),
+        }
     }
-
-    }
-
 
     let mut project_map: ProjectMap = BTreeMap::new();
 
@@ -258,9 +246,7 @@ fn create_project_map<'a>(
     }
 
     project_map
-    
 }
-
 
 pub fn sum_duration(activities: &[&activity::Activity]) -> Duration {
     let mut duration = Duration::seconds(0);
@@ -387,12 +373,21 @@ fn return_duration_len(line: &ReportLine) -> usize {
 }
 
 fn get_longest_line_info(lines: &[ReportLine]) -> LongestLineInfo {
-    let longest_name = lines.iter().map(|line| return_name_len(line)).max().unwrap_or(0);
-    let longest_duration = lines.iter().map(|line| return_duration_len(line)).max().unwrap_or(0);
+    let longest_name = lines
+        .iter()
+        .map(|line| return_name_len(line))
+        .max()
+        .unwrap_or(0);
+    let longest_duration = lines
+        .iter()
+        .map(|line| return_duration_len(line))
+        .max()
+        .unwrap_or(0);
 
- 
-    
-    LongestLineInfo { name: longest_name, duration: longest_duration }
+    LongestLineInfo {
+        name: longest_name,
+        duration: longest_duration,
+    }
 }
 
 // fn get_longest_duration_string(report: &Report) -> Option<usize> {
@@ -491,57 +486,17 @@ mod tests {
         let a3 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
 
         let activities = vec![&a1, &a2, &a3];
-        let m = create_project_map(&activities);
+        let m = create_project_map(
+            &activities,
+            vec![
+                Box::new(ReportGroupProject),
+                Box::new(ReportGroupDescription),
+            ],
+        );
 
         assert_eq!(m.len(), 2);
-        assert_eq!(m.get("p1").unwrap().0.len(), 2);
-        assert_eq!(m.get("p2").unwrap().0.len(), 1);
-    }
-
-    #[test]
-    fn group_activities_by_description_test() {
-        let a1 = activity::Activity::start("p1".to_string(), "d1".to_string(), None);
-        let a2 = activity::Activity::start("p1".to_string(), "d2".to_string(), None);
-        let a3 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
-        let a4 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
-
-        let activities = vec![&a1, &a2, &a3, &a4];
-        let m = group_activities_by_description(&activities);
-
-        assert_eq!(m.len(), 2);
-        assert_eq!(m.get("d1").unwrap().len(), 3);
-        assert_eq!(m.get("d2").unwrap().len(), 1);
-    }
-
-    #[test]
-    fn get_longest_line_test() {
-        let mut activities: Vec<&activity::Activity> = Vec::new();
-        let project_map1 = create_project_map(&activities);
-
-        // keine Einträge -> keine Längste Zeile
-        assert_eq!(get_longest_line(&project_map1), None);
-
-        let a1 = activity::Activity::start("p1".to_string(), "d1".to_string(), None);
-        let a2 = activity::Activity::start("p1".to_string(), "d2".to_string(), None);
-        let a3 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
-        let a4 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
-        let a5 = activity::Activity::start("p2".to_string(), "d1".to_string(), None);
-
-        activities.push(&a1);
-        activities.push(&a2);
-        activities.push(&a3);
-        activities.push(&a4);
-        activities.push(&a5);
-
-        // längste Zeile ist Description + 4
-        let project_map2 = create_project_map(&activities);
-        assert_eq!(get_longest_line(&project_map2).unwrap(), 6);
-
-        // längste Zeile ist Projektname mit 8 Zeichen
-        let a6 = activity::Activity::start("p1234567".to_string(), "d1".to_string(), None);
-        activities.push(&a6);
-        let project_map3 = create_project_map(&activities);
-        assert_eq!(get_longest_line(&project_map3).unwrap(), 8);
+        assert_eq!(m.get("p1").unwrap().items.len(), 2, "{m:?}");
+        assert_eq!(m.get("p2").unwrap().items.len(), 1);
     }
 
     #[test]

@@ -7,7 +7,9 @@ use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 use bartib::data::getter::ActivityFilter;
 use bartib::data::processor;
-use bartib::view::report::{ReportGroup, ReportGroupDate, ReportGroupDescription, ReportGroupProject};
+use bartib::view::report::{
+    ReportGroup, ReportGroupDate, ReportGroupDescription, ReportGroupProject,
+};
 
 #[cfg(windows)]
 use nu_ansi_term::enable_ansi_support;
@@ -548,7 +550,7 @@ fn get_duration_argument_or_ignore(
 
 fn get_group_argument_or_pd(
     group_argument: Option<&str>,
-    argument_name: &str
+    argument_name: &str,
 ) -> Vec<Box<dyn ReportGroup>> {
     let mut groups: Vec<Box<dyn ReportGroup>> = Vec::new();
 
@@ -558,14 +560,16 @@ fn get_group_argument_or_pd(
                 b'p' => groups.push(Box::new(ReportGroupProject)),
                 b'd' => groups.push(Box::new(ReportGroupDescription)),
                 b'c' => groups.push(Box::new(ReportGroupDate)),
-                _ => {panic!("{} is not a valid argument for {}", char, argument_name);
-                    
+                _ => {
+                    panic!("{} is not a valid argument for {}", char, argument_name);
                 }
             }
         }
         groups
     } else {
-        vec![Box::new(ReportGroupProject), Box::new(ReportGroupDescription)]
+        vec![
+            Box::new(ReportGroupProject),
+            Box::new(ReportGroupDescription),
+        ]
     }
-
 }
