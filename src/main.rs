@@ -504,7 +504,7 @@ fn get_time_argument_or_ignore(
         }
 
         // build an optional closure if the user has entered a relative time
-        let current_time = Utc::now().naive_utc().time(); // TODO should this be naive UTC or naive local?!!!
+        let current_time = Local::now().naive_local().time();
         let relative_time_closure: Option<Box<dyn Fn(NaiveTime) -> NaiveTime>> =
             if time_string.starts_with('-') {
                 Some(Box::new(|time: NaiveTime| {
@@ -586,7 +586,7 @@ fn get_duration_argument_or_ignore(
 mod tests {
     use std::str::FromStr;
 
-    use chrono::{Duration, DurationRound, NaiveDateTime, NaiveTime, Utc};
+    use chrono::{Duration, Local, NaiveTime};
 
     use crate::get_time_argument_or_ignore;
 
@@ -618,7 +618,7 @@ mod tests {
             Some(NaiveTime::from_str("09:00").unwrap())
         );
 
-        let approx_current_time = Utc::now().naive_utc().time();
+        let approx_current_time = Local::now().naive_local().time();
         let time_delta = Duration::hours(1);
         let target_time = approx_current_time + time_delta;
         assert_eq!(
