@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use bartib::view::status::StatusReport;
 use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike, Utc};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
@@ -297,7 +297,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("start", Some(sub_m)) => {
             let project_name = sub_m.value_of("project").unwrap();
             let activity_description = sub_m.value_of("description").unwrap();
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
 
             bartib::controller::manipulation::start(
@@ -310,7 +310,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("change", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
             let activity_description = sub_m.value_of("description");
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
 
             bartib::controller::manipulation::change(
@@ -323,7 +323,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("continue", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
             let activity_description = sub_m.value_of("description");
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
             let number =
                 get_number_argument_or_ignore(sub_m.value_of("number"), "-n/--number").unwrap_or(0);
@@ -337,7 +337,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             )
         }
         ("stop", Some(sub_m)) => {
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
 
             bartib::controller::manipulation::stop(file_name, time)
@@ -491,7 +491,7 @@ fn get_date_argument_or_ignore(
 fn get_time_argument_or_ignore(
     time_argument: Option<&str>,
     argument_name: &str,
-) -> Option<NaiveTime> {
+) -> Result<Option<NaiveTime>> {
     if let Some(time_string) = time_argument {
         let mut time_string = String::from(time_string);
 
@@ -518,14 +518,12 @@ fn get_time_argument_or_ignore(
 
                 // if it is a relative time, decimal hours are allowed, so convert to HH::MM
                 if time_string.contains('.') {
-                    let (hours, decimal_minutes) = time_string.split_once('.').unwrap();
-                    let minutes = format!("0.{decimal_minutes}").parse::<f64>().unwrap() * 60.0;
-
-                    // bail if the user has entered a number greater than 99 on the right side of the decimal
-                    if minutes >= 60.0 {
-                        println!("Invalid relative time {time_string}, time argument ignored"); //TODO return error instead
-                        return None;
-                    }
+                    let (hours, decimal_minutes) = time_string.split_once('.').map_or(
+                        Err(anyhow!("Failed to parse relative time at delimeter")),
+                        |val| Ok(val),
+                    )?;
+                    let decimal_minutes = format!("0.{decimal_minutes}");
+                    let minutes = decimal_minutes.parse::<f64>()? * 60.0;
 
                     let minutes_string = minutes.to_string();
                     time_string = format!("{hours}:{minutes_string}");
@@ -556,16 +554,14 @@ fn get_time_argument_or_ignore(
             );
 
         match parsing_result {
-            Ok(date) => Some(date),
-            Err(parsing_error) => {
-                println!(
-                    "Can not parse \"{time_string}\" as time. Argument for {argument_name} is ignored ({parsing_error})"
-                );
-                None
-            }
+            Ok(date) => Ok(Some(date)),
+            Err(parsing_error) => Err(anyhow!(
+                "Can not parse \"{time_string}\" as time. Argument for {argument_name}"
+            )),
         }
     } else {
-        None
+        // no time string provided
+        Ok(None)
     }
 }
 
@@ -607,29 +603,31 @@ mod tests {
 
     #[test]
     fn test_parse_time() {
-        assert_eq!(get_time_argument_or_ignore(Some(""), "argument_name"), None);
+        assert!(get_time_argument_or_ignore(Some(""), "argument_name").is_err());
 
         assert_eq!(
-            get_time_argument_or_ignore(Some("10:00"), "argument_name"),
+            get_time_argument_or_ignore(Some("10:00"), "argument_name").unwrap(),
             Some(NaiveTime::from_str("10:00").unwrap())
         );
 
-        assert!(get_time_argument_or_ignore(Some("jkhkj"), "argument_name").is_none());
+        assert!(get_time_argument_or_ignore(Some("jkhkj"), "argument_name").is_err());
 
-        assert!(get_time_argument_or_ignore(None, "argument_name").is_none());
+        assert!(get_time_argument_or_ignore(None, "argument_name")
+            .unwrap()
+            .is_none());
 
         assert_eq!(
-            get_time_argument_or_ignore(Some("1000"), "argument_name"),
+            get_time_argument_or_ignore(Some("1000"), "argument_name").unwrap(),
             Some(NaiveTime::from_str("10:00").unwrap())
         );
 
         assert_eq!(
-            get_time_argument_or_ignore(Some("900"), "argument_name"),
+            get_time_argument_or_ignore(Some("900"), "argument_name").unwrap(),
             Some(NaiveTime::from_str("09:00").unwrap())
         );
 
         assert_eq!(
-            get_time_argument_or_ignore(Some("9:00"), "argument_name"),
+            get_time_argument_or_ignore(Some("9:00"), "argument_name").unwrap(),
             Some(NaiveTime::from_str("09:00").unwrap())
         );
 
@@ -646,7 +644,9 @@ mod tests {
             ("+0130", Duration::seconds(5400), true, false),
             ("+1.5", Duration::seconds(5400), true, false),
             ("+1.50", Duration::seconds(5400), true, false),
-            ("+1.300", Duration::seconds(5400), true, true),
+            ("+1.500", Duration::seconds(5400), true, false),
+            ("+1.", Duration::hours(1), true, false),
+            ("+1.5sdf", Duration::seconds(5400), true, true),
         ];
 
         for test in relative_time_tests {
@@ -658,14 +658,24 @@ mod tests {
             } else {
                 target_time = approx_current_time - time_delta;
             }
-            assert_eq!(
-                get_time_argument_or_ignore(Some(test.0), "argument_name")
-                    .unwrap()
-                    .signed_duration_since(target_time)
-                    .num_seconds(),
-                0i64,
-                "{test:?}"
-            )
+
+            if test.3 {
+                assert!(
+                    get_time_argument_or_ignore(Some(test.0), "argument_name").is_err(),
+                    "{:?}",
+                    test
+                )
+            } else {
+                assert_eq!(
+                    get_time_argument_or_ignore(Some(test.0), "argument_name")
+                        .unwrap()
+                        .unwrap()
+                        .signed_duration_since(target_time)
+                        .num_seconds(),
+                    0i64,
+                    "{test:?}"
+                )
+            }
         }
     }
 }
