@@ -495,14 +495,6 @@ fn get_time_argument_or_ignore(
     if let Some(time_string) = time_argument {
         let mut time_string = String::from(time_string);
 
-        if !time_string.contains(":") && time_string.len() >= 3 {
-            // The time does not contain a colon, but might still be a valid time
-            // add a colon before the minutes
-            // this assumes that the time is provided in either HHMM or HMM
-            // a single digit for minutes is not supported, nor handled
-            time_string.insert(time_string.len() - 2, ':');
-        }
-
         // build an optional closure if the user has entered a relative time
         let current_time = Local::now().naive_local().time();
         let relative_time_closure: Option<Box<dyn Fn(NaiveTime) -> NaiveTime>> =
@@ -523,9 +515,32 @@ fn get_time_argument_or_ignore(
         match relative_time_closure {
             Some(_) => {
                 time_string.remove(0);
+
+                // if it is a relative time, decimal hours are allowed, so convert to HH::MM
+                if time_string.contains('.') {
+                    let (hours, decimal_minutes) = time_string.split_once('.').unwrap();
+                    let minutes = format!("0.{decimal_minutes}").parse::<f64>().unwrap() * 60.0;
+
+                    // bail if the user has entered a number greater than 99 on the right side of the decimal
+                    if minutes >= 60.0 {
+                        println!("Invalid relative time {time_string}, time argument ignored"); //TODO return error instead
+                        return None;
+                    }
+
+                    let minutes_string = minutes.to_string();
+                    time_string = format!("{hours}:{minutes_string}");
+                }
                 ()
             }
             None => (),
+        }
+
+        if !time_string.contains(":") && time_string.len() >= 3 {
+            // The time does not contain a colon, but might still be a valid time
+            // add a colon before the minutes
+            // this assumes that the time is provided in either HHMM or HMM
+            // a single digit for minutes is not supported, nor handled
+            time_string.insert(time_string.len() - 2, ':');
         }
 
         // parse the user entered time
@@ -618,10 +633,20 @@ mod tests {
             Some(NaiveTime::from_str("09:00").unwrap())
         );
 
+        // 0 - input string
+        // 1 - relative duration
+        // 2 - true = positive, false = negative
+        // 3 - test inputs should return error
         let relative_time_tests = [
-            ("+1:00", Duration::hours(1), true),
-            ("-1:00", Duration::hours(1), false),
-            ("+1:30", Duration::seconds(5400), true),
+            ("+1:00", Duration::hours(1), true, false),
+            ("-1:00", Duration::hours(1), false, false),
+            ("+1:30", Duration::seconds(5400), true, false),
+            ("+01:30", Duration::seconds(5400), true, false),
+            ("+130", Duration::seconds(5400), true, false),
+            ("+0130", Duration::seconds(5400), true, false),
+            ("+1.5", Duration::seconds(5400), true, false),
+            ("+1.50", Duration::seconds(5400), true, false),
+            ("+1.300", Duration::seconds(5400), true, true),
         ];
 
         for test in relative_time_tests {
@@ -638,7 +663,8 @@ mod tests {
                     .unwrap()
                     .signed_duration_since(target_time)
                     .num_seconds(),
-                0i64
+                0i64,
+                "{test:?}"
             )
         }
     }
