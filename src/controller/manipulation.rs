@@ -1,9 +1,5 @@
 use anyhow::{anyhow, bail, Context, Error, Result};
-use chrono::Duration;
-use chrono::DurationRound;
 use chrono::NaiveDateTime;
-use chrono::NaiveTime;
-use chrono::SubsecRound;
 use std::process::Command;
 
 use crate::conf;
@@ -262,24 +258,40 @@ fn stop_all_running_activities(
 
 #[cfg(test)]
 mod tests {
-    use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
+    use std::{path::PathBuf, str::FromStr, time::Duration};
 
-    use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+    use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
     use temp_dir::TempDir;
 
     use crate::data::bartib_file::{get_file_content, Line};
 
-    fn seed_test_file(file_path: &str) -> Vec<Line> {
+    fn seed_test_file(
+        file_path: &str,
+        additional_seed_activities: Vec<(&str, &str, Option<NaiveDateTime>, Option<NaiveDateTime>)>,
+    ) -> Vec<Line> {
         // Seed the temp file with random activities
+
+        let mut count = 0;
+
         for i in 1..100 {
             let project = format!("proj{i}");
             let description = format!("desc{i}");
             super::start(file_path, project.as_str(), description.as_str(), None).unwrap();
             super::stop(file_path, None).unwrap();
+            count += 1;
+        }
+
+        // write additional activities for testing specific edge conditions
+        for activity in additional_seed_activities {
+            super::start(file_path, activity.0, activity.1, activity.2).unwrap();
+            super::stop(file_path, activity.3).unwrap();
+            count += 1;
         }
 
         let mut file_contents = get_file_content(file_path).unwrap();
-        let added_lines: Vec<Line> = file_contents.drain((file_contents.len() - 99)..).collect();
+        let added_lines: Vec<Line> = file_contents
+            .drain((file_contents.len() - count)..)
+            .collect();
         added_lines
     }
 
@@ -289,7 +301,7 @@ mod tests {
         let temp_file = PathBuf::from(temp_dir.path()).join("temp.txt");
         let temp_file_str = temp_file.to_str().unwrap();
 
-        let test_file_seed = seed_test_file(&temp_file_str);
+        let test_file_seed = seed_test_file(&temp_file_str, Vec::new());
 
         // Check that simply changing the time correctly, and only, alters the currently running activity
         super::start(&temp_file_str, "test_proj", "test_desc", None).unwrap();
@@ -319,13 +331,28 @@ mod tests {
         let temp_path_str = temp_path.to_str().unwrap();
 
         let start_time = NaiveDateTime::new(
-            NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+            NaiveDate::from_ymd_opt(2026, 01, 02).unwrap(),
             NaiveTime::from_num_seconds_from_midnight_opt(3600, 0).unwrap(),
         );
         let initial_finish = start_time + Duration::new(3600, 0);
         let final_finish = start_time + Duration::new(7200, 0);
 
-        let file_seed = seed_test_file(&temp_path_str);
+        // write a project for the previous day which starts at the same time
+        // this should not be affected
+        let additional_seed_activities = vec![(
+            "yesterdays proj",
+            "",
+            Some(NaiveDateTime::new(
+                NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+                NaiveTime::from_num_seconds_from_midnight_opt(1200, 0).unwrap(),
+            )),
+            Some(NaiveDateTime::new(
+                NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+                NaiveTime::from_num_seconds_from_midnight_opt(3600, 0).unwrap(),
+            )),
+        )];
+
+        let file_seed = seed_test_file(&temp_path_str, additional_seed_activities);
 
         super::start(
             &temp_path_str,
