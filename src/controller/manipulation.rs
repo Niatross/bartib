@@ -65,6 +65,8 @@ pub fn change(
 ) -> Result<()> {
     let mut file_content = bartib_file::get_file_content(file_name)?;
 
+    let mut prev_start_time: Option<NaiveDateTime> = None;
+
     // iterate through all activities a check whether they need modifying
     for line in &mut file_content {
         if let Ok(activity) = &mut line.activity {
@@ -83,7 +85,7 @@ pub fn change(
                 }
 
                 if let Some(time) = time {
-                    update_end_times(&mut file_content, &activity.start, &time);
+                    prev_start_time = Some(activity.start.clone());
                     activity.start = time;
                     changed = true;
                 }
@@ -101,11 +103,15 @@ pub fn change(
         }
     }
 
+    if let Some(prev_start_time) = prev_start_time {
+        update_end_times(&mut file_content, &prev_start_time, &time.unwrap());
+    }
+
     // if the user is changing the start time, check to see if there is another entry with the same finish time
     // If there is, also change that finish time to the new user entered start time
     // This is useful where the user has stopped a task by starting a new one
     fn update_end_times(
-        mut file_content: &Vec<Line>,
+        file_content: &mut Vec<Line>,
         current_end_time: &NaiveDateTime,
         new_end_time: &NaiveDateTime,
     ) {
@@ -115,14 +121,14 @@ pub fn change(
                 line.activity.as_ref().map_or(false, |activity| {
                     activity.end.map_or(false, |end_time| {
                         println!("{end_time}");
-                        end_time == current_end_time
+                        &end_time == current_end_time
                     })
                 })
             })
             .for_each(|line| {
                 println!("modifying activity");
                 let mut activity = line.activity.as_ref().unwrap().clone();
-                activity.end = Some(new_end_time);
+                activity.end = Some(new_end_time.clone());
 
                 println!(
                     "Changed activity: \"{}\" ({}) ended at {}",
