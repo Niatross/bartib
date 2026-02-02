@@ -100,35 +100,28 @@ pub fn change(
     }
 
     if let Some(prev_start_time) = prev_start_time {
-        update_end_times(&mut file_content, &prev_start_time, &time.unwrap());
-    }
+        // if the user is changing the start time, check to see if there is another entry with the same finish time
+        // If there is, also change that finish time to the new user entered start time
+        // This is useful where the user has stopped a task by starting a new one
 
-    // if the user is changing the start time, check to see if there is another entry with the same finish time
-    // If there is, also change that finish time to the new user entered start time
-    // This is useful where the user has stopped a task by starting a new one
-    fn update_end_times(
-        file_content: &mut Vec<Line>,
-        current_end_time: &NaiveDateTime,
-        new_end_time: &NaiveDateTime,
-    ) {
         file_content
             .iter_mut()
             .filter(|line| {
                 line.activity.as_ref().map_or(false, |activity| {
                     activity
                         .end
-                        .map_or(false, |end_time| &end_time == current_end_time)
+                        .map_or(false, |end_time| end_time == prev_start_time)
                 })
             })
             .for_each(|line| {
                 let mut activity = line.activity.as_ref().unwrap().clone();
-                activity.end = Some(new_end_time.clone());
+                activity.end = Some(time.unwrap().clone());
 
                 println!(
                     "Changed activity: \"{}\" ({}) ended at {}",
                     activity.description,
                     activity.project,
-                    new_end_time.format(conf::FORMAT_DATETIME)
+                    time.unwrap().format(conf::FORMAT_DATETIME)
                 );
 
                 line.activity = Ok(activity);
