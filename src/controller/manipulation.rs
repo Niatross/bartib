@@ -104,6 +104,11 @@ pub fn change(
         // If there is, also change that finish time to the new user entered start time
         // This is useful where the user has stopped a task by starting a new one
 
+        // This does not handle their being more than one active project
+        // As this is not directly supported by the bartib API it has been ignored
+        // instead this will just update the last active project
+        // Consideration should be made to whether there should be guarding to protect against this eventuality
+
         file_content
             .iter_mut()
             .filter(|line| {
