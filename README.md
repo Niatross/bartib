@@ -308,7 +308,7 @@ bartib search "e*t?ng"   # use '?' and '*' as wildcards
 ```bash
 bartib change -d "A new description"   # change the description of the current activity
 bartib change -p "Another project"   # change the project for the current activity
-bartib change -t 8:15   # change the start time of the current activity
+bartib change -t 8:15   # change the start time of the current activity, if there is an activity with an end time the same as the current start time, this will also be updated
 
 bartib edit   # open the activity log in the editor you have defined in your `EDITOR` environment variable
 bartib edit -e vim    # open the activity log in a given editor
