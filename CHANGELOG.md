@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added total hours to the grouped list (thanks to [@Niatross](https://github.com/Niatross))
 - Update of libc:musl to support longarch64 (thanks to [@zhaixiaojuan](https://github.com/zhaixiaojuan))
 - Improved general `--help` output (thanks to [@RossBarnie](https://github.com/RossBarnie))
+- `change` command will now update the previous activities end date if it is the same as the current activities current start time (thanks to [@Niatross](https://github.com/Niatross))
 
 ## [1.1.0] - 2024-02-29
 
