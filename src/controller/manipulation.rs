@@ -1,10 +1,15 @@
 use anyhow::{anyhow, bail, Context, Error, Result};
+use chrono::Duration;
+use chrono::DurationRound;
 use chrono::NaiveDateTime;
+use chrono::NaiveTime;
+use chrono::SubsecRound;
 use std::process::Command;
 
 use crate::conf;
 use crate::data::activity;
 use crate::data::bartib_file;
+use crate::data::bartib_file::Line;
 use crate::data::getter;
 use crate::view::format_util;
 
@@ -60,9 +65,11 @@ pub fn change(
 ) -> Result<()> {
     let mut file_content = bartib_file::get_file_content(file_name)?;
 
+    // iterate through all activities a check whether they need modifying
     for line in &mut file_content {
         if let Ok(activity) = &mut line.activity {
             if !activity.is_stopped() {
+                // only modify currently running activities
                 let mut changed = false;
 
                 if let Some(project_name) = project_name {
@@ -76,6 +83,7 @@ pub fn change(
                 }
 
                 if let Some(time) = time {
+                    update_end_times(&mut file_content, &activity.start, &time);
                     activity.start = time;
                     changed = true;
                 }
@@ -92,6 +100,42 @@ pub fn change(
             }
         }
     }
+
+    // if the user is changing the start time, check to see if there is another entry with the same finish time
+    // If there is, also change that finish time to the new user entered start time
+    // This is useful where the user has stopped a task by starting a new one
+    fn update_end_times(
+        mut file_content: &Vec<Line>,
+        current_end_time: &NaiveDateTime,
+        new_end_time: &NaiveDateTime,
+    ) {
+        file_content
+            .iter_mut()
+            .filter(|line| {
+                line.activity.as_ref().map_or(false, |activity| {
+                    activity.end.map_or(false, |end_time| {
+                        println!("{end_time}");
+                        end_time == current_end_time
+                    })
+                })
+            })
+            .for_each(|line| {
+                println!("modifying activity");
+                let mut activity = line.activity.as_ref().unwrap().clone();
+                activity.end = Some(new_end_time);
+
+                println!(
+                    "Changed activity: \"{}\" ({}) ended at {}",
+                    activity.description,
+                    activity.project,
+                    new_end_time.format(conf::FORMAT_DATETIME)
+                );
+
+                line.activity = Ok(activity);
+                line.set_changed();
+            });
+    }
+
     bartib_file::write_to_file(file_name, &file_content)
         .context(format!("Could not write to file: {file_name}"))
 }
