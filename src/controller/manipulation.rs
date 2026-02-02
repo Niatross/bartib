@@ -216,10 +216,24 @@ fn stop_all_running_activities(
 mod tests {
     use std::{path::PathBuf, str::FromStr, thread::sleep, time::Duration};
 
-    use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Timelike};
+    use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime, Timelike};
     use temp_dir::TempDir;
 
-    use crate::data::bartib_file::get_file_content;
+    use crate::data::bartib_file::{get_file_content, Line};
+
+    fn seed_test_file(file_path: &str) -> Vec<Line> {
+        // Seed the temp file with random activities
+        for i in 1..100 {
+            let project = format!("proj{i}");
+            let description = format!("desc{i}");
+            super::start(file_path, project.as_str(), description.as_str(), None).unwrap();
+            super::stop(file_path, None).unwrap();
+        }
+
+        let mut file_contents = get_file_content(file_path).unwrap();
+        let added_lines: Vec<Line> = file_contents.drain((file_contents.len() - 99)..).collect();
+        added_lines
+    }
 
     #[test]
     fn test_change() {
@@ -227,13 +241,9 @@ mod tests {
         let temp_file = PathBuf::from(temp_dir.path()).join("temp.txt");
         let temp_file_str = temp_file.to_str().unwrap();
 
-        for i in 1..100 {
-            let project = format!("proj{i}");
-            let description = format!("desc{i}");
-            super::start(temp_file_str, project.as_str(), description.as_str(), None).unwrap();
-            super::stop(temp_file_str, None).unwrap();
-        }
+        let test_file_seed = seed_test_file(&temp_file_str);
 
+        // Check that simply changing the time correctly, and only, alters the currently running activity
         super::start(&temp_file_str, "test_proj", "test_desc", None).unwrap();
 
         let target_time = NaiveDateTime::new(
@@ -251,6 +261,70 @@ mod tests {
         let changed_activity = file_contents.pop().unwrap().activity.unwrap();
 
         assert_eq!(&changed_activity.start, &target_time);
-        assert_eq!(original_file_contents, file_contents);
+        assert_eq!(test_file_seed, file_contents);
+    }
+
+    #[test]
+    fn test_change_whilst_affecting_prev() {
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = PathBuf::from(temp_dir.path()).join("temp_file.txt");
+        let temp_path_str = temp_path.to_str().unwrap();
+
+        let start_time = NaiveDateTime::new(
+            NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+            NaiveTime::from_num_seconds_from_midnight_opt(3600, 0).unwrap(),
+        );
+        let initial_finish = start_time + Duration::new(3600, 0);
+        let final_finish = start_time + Duration::new(7200, 0);
+
+        let file_seed = seed_test_file(&temp_path_str);
+
+        super::start(
+            &temp_path_str,
+            "prev_proj",
+            "prev_proj_desc",
+            Some(start_time),
+        )
+        .unwrap();
+
+        super::start(
+            &temp_path_str,
+            "second_proj",
+            "second proj desc",
+            Some(initial_finish),
+        )
+        .unwrap();
+
+        super::change(&temp_path_str, None, None, Some(final_finish)).unwrap();
+
+        let mut file_contents = get_file_content(&temp_path_str).unwrap();
+        let test_activities: Vec<Line> = file_contents.split_off(file_contents.len() - 2);
+
+        println!("{test_activities:?}");
+
+        assert_eq!(
+            test_activities
+                .get(0)
+                .unwrap()
+                .activity
+                .as_ref()
+                .unwrap()
+                .end
+                .unwrap(),
+            final_finish
+        );
+
+        assert_eq!(
+            test_activities
+                .get(1)
+                .unwrap()
+                .activity
+                .as_ref()
+                .unwrap()
+                .start,
+            final_finish
+        );
+
+        assert_eq!(file_contents, file_seed);
     }
 }
