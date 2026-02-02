@@ -119,14 +119,12 @@ pub fn change(
             .iter_mut()
             .filter(|line| {
                 line.activity.as_ref().map_or(false, |activity| {
-                    activity.end.map_or(false, |end_time| {
-                        println!("{end_time}");
-                        &end_time == current_end_time
-                    })
+                    activity
+                        .end
+                        .map_or(false, |end_time| &end_time == current_end_time)
                 })
             })
             .for_each(|line| {
-                println!("modifying activity");
                 let mut activity = line.activity.as_ref().unwrap().clone();
                 activity.end = Some(new_end_time.clone());
 
