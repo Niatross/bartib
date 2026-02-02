@@ -311,7 +311,7 @@ mod tests {
         let changed_activity = file_contents.pop().unwrap().activity.unwrap();
 
         assert_eq!(&changed_activity.start, &target_time);
-        assert_eq!(test_file_seed, file_contents);
+        assert_eq!(test_file_seed, original_file_contents);
     }
 
     #[test]
