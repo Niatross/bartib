@@ -5,7 +5,7 @@ use std::ops::Add;
 
 use crate::data::activity::{self, Activity};
 use crate::view::format_util;
-use chrono::Duration;
+use chrono::{Datelike, Duration};
 use nu_ansi_term::Style;
 
 use super::format_util::format_duration;
@@ -145,7 +145,9 @@ pub trait ReportGroup {
 pub struct ReportGroupDate;
 impl ReportGroup for ReportGroupDate {
     fn return_identifier(&self, activity: &Activity) -> String {
-        activity.start.date().to_string()
+        let date_string = activity.start.date().to_string();
+        let day_string = activity.start.date().weekday().to_string();
+        format!("{date_string} ({day_string})")
     }
 }
 pub struct ReportGroupProject;
