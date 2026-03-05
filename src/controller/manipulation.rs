@@ -4,9 +4,7 @@ use std::process::Command;
 
 use crate::conf;
 use crate::data::activity;
-use crate::data::activity::Activity;
 use crate::data::bartib_file;
-use crate::data::bartib_file::Line;
 use crate::data::getter;
 use crate::data::getter::get_running_activities;
 use crate::view::format_util;

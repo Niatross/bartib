@@ -15,7 +15,6 @@ type ReportLines = Vec<ReportLine>;
 
 struct Report {
     project_map: ProjectMap,
-    total_duration: Duration,
 }
 
 #[derive(Debug)]
@@ -95,7 +94,6 @@ impl Report {
     fn new(activities: &[&activity::Activity], groups: Vec<Box<dyn ReportGroup>>) -> Report {
         Report {
             project_map: create_project_map(activities, groups),
-            total_duration: sum_duration(activities),
         }
     }
 
