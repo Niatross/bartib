@@ -13,12 +13,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Subcommand `search` to search the list of last activities for terms (thanks to [@Pyxels](https://github.com/Pyxels))
 - Subcommand `status` to display the total duration of activities today, in the current week and in the current month (thanks to [@airenas](https://github.com/airenas))
 - Option `--no-quotes` to `project` to suppres quotes in the projects list (thanks to [@defigli](https://github.com/defigli))
+- Option `--continue` used to automatically continue the currently running activity after applying the subcommand [@Niatross](https://github.com/Niatross))
 
 ### Changed
 
 - Added total hours to the grouped list (thanks to [@Niatross](https://github.com/Niatross))
 - Update of libc:musl to support longarch64 (thanks to [@zhaixiaojuan](https://github.com/zhaixiaojuan))
 - Improved general `--help` output (thanks to [@RossBarnie](https://github.com/RossBarnie))
+- The details argument is optional and defaults to "" [@Niatross](https://github.com/Niatross))
+- time argument accepts the following formats: HHMM, HMM, decimal hours and relative hours to the current time [@Niatross](https://github.com/Niatross))
+- Report command now accepts a --group argument which generates a hierachial output based upon project, description and date (thanks to[@Niatross](https://github.com/Niatross))
+- `change` command will now update the previous activities end date if it is the same as the current activities current start time (thanks to [@Niatross](https://github.com/Niatross))
 
 ## [1.1.0] - 2024-02-29
 

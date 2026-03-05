@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use crate::conf;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Activity {
     pub start: NaiveDateTime,
     pub end: Option<NaiveDateTime>,
@@ -18,7 +18,7 @@ pub struct Activity {
     pub description: String,
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum ActivityError {
     #[error("could not parse date or time of activity")]
     DateTimeParseError,
@@ -216,7 +216,7 @@ impl Iterator for StringSplitter<'_> {
     }
 }
 
-fn split_with_escaped_delimiter(s: &str) -> StringSplitter {
+fn split_with_escaped_delimiter(s: &str) -> StringSplitter<'_> {
     StringSplitter { chars: s.chars() }
 }
 

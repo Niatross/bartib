@@ -236,6 +236,8 @@ All these commands require that you have set the `BARTIB_FILE` environment varia
 bartib -h    # get help
 bartib start -p "name of the project" -d "description of the activity"    # start a new activity
 bartib stop    # stop an activity
+bartib stop -t 10:00   # stop an activity at 10:00
+bartib stop -t 10:00 -c   # stop the current activity at 10:00, and then restart (continue) it at the current time
 bartib list --today    # list all activities of the current day
 bartib report --today    # create a report for today
 ```
@@ -255,6 +257,8 @@ bartib start -p "The name of the associated project" -d "A description of the ac
 
 bartib stop    # Stop the currently running activity
 bartib stop -t 14:00    # Stop the currently running activity at a given time
+bartib stop -t -1.5    # Stops the currently running activity 1.5 hours ago
+bartib stop -t +1.00    # Stops the currently running activity 1 hour in the future
 
 bartib last    # Print a list of the ten most recently used projects and descriptions
 bartib last -n 25   # Prints a list of recently used projects and descriptions with more entries
@@ -281,6 +285,7 @@ bartib report --from 2021-09-01 --to 2021-09-05    # create a report for a given
 bartib report --project "The most exciting project"    # create a report for a given project
 bartib report --project "Maint?nance *"    # use '?' and '*' as wildcards in project names
 bartib report --round 15m # rounds the start and end time to the nearest duration. Durations can be in minutes or hours. E.g. 15m or 4h
+bartib report -g pd # Generates a hiearchial report grouped by project and then description
 
 bartib list    # list all activities grouped by day
 bartib list --no_grouping    # list all activities but do not group them by day
@@ -303,7 +308,7 @@ bartib search "e*t?ng"   # use '?' and '*' as wildcards
 ```bash
 bartib change -d "A new description"   # change the description of the current activity
 bartib change -p "Another project"   # change the project for the current activity
-bartib change -t 8:15   # change the start time of the current activity
+bartib change -t 8:15   # change the start time of the current activity, if there is an activity with an end time the same as the current start time, this will also be updated
 
 bartib edit   # open the activity log in the editor you have defined in your `EDITOR` environment variable
 bartib edit -e vim    # open the activity log in a given editor

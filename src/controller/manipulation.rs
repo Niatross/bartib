@@ -6,6 +6,7 @@ use crate::conf;
 use crate::data::activity;
 use crate::data::bartib_file;
 use crate::data::getter;
+use crate::data::getter::get_running_activities;
 use crate::view::format_util;
 
 // starts a new activity
@@ -60,9 +61,13 @@ pub fn change(
 ) -> Result<()> {
     let mut file_content = bartib_file::get_file_content(file_name)?;
 
+    let mut prev_start_time: Option<NaiveDateTime> = None;
+
+    // iterate through all activities a check whether they need modifying
     for line in &mut file_content {
         if let Ok(activity) = &mut line.activity {
             if !activity.is_stopped() {
+                // only modify currently running activities
                 let mut changed = false;
 
                 if let Some(project_name) = project_name {
@@ -76,6 +81,7 @@ pub fn change(
                 }
 
                 if let Some(time) = time {
+                    prev_start_time = Some(activity.start.clone());
                     activity.start = time;
                     changed = true;
                 }
@@ -92,6 +98,42 @@ pub fn change(
             }
         }
     }
+
+    if let Some(prev_start_time) = prev_start_time {
+        // if the user is changing the start time, check to see if there is another entry with the same finish time
+        // If there is, also change that finish time to the new user entered start time
+        // This is useful where the user has stopped a task by starting a new one
+
+        // This does not handle their being more than one active project
+        // As this is not directly supported by the bartib API it has been ignored
+        // instead this will just update the last active project
+        // Consideration should be made to whether there should be guarding to protect against this eventuality
+
+        file_content
+            .iter_mut()
+            .filter(|line| {
+                line.activity.as_ref().map_or(false, |activity| {
+                    activity
+                        .end
+                        .map_or(false, |end_time| end_time == prev_start_time)
+                })
+            })
+            .for_each(|line| {
+                let mut activity = line.activity.as_ref().unwrap().clone();
+                activity.end = Some(time.unwrap().clone());
+
+                println!(
+                    "Changed activity: \"{}\" ({}) ended at {}",
+                    activity.description,
+                    activity.project,
+                    time.unwrap().format(conf::FORMAT_DATETIME)
+                );
+
+                line.activity = Ok(activity);
+                line.set_changed();
+            });
+    }
+
     bartib_file::write_to_file(file_name, &file_content)
         .context(format!("Could not write to file: {file_name}"))
 }
@@ -177,6 +219,32 @@ pub fn continue_last_activity(
     }
 }
 
+pub fn return_continue_current_activity_closure(
+    file_name: &str,
+) -> Result<Box<dyn Fn() -> Result<()> + '_>> {
+    let file_content = bartib_file::get_file_content(&file_name)?;
+
+    let current_activities = get_running_activities(&file_content);
+
+    let closure: Box<dyn Fn() -> Result<()> + '_> = match current_activities.len() {
+        0 => Box::new(|| -> Result<()> {
+            println!("There is no activity currently running to restart");
+            Ok(())
+        }),
+        1 => {
+            let activity = current_activities[0].clone();
+            Box::new(move || start(file_name, &activity.project, &activity.description, None))
+        }
+        _ => {
+            return Err(anyhow!(
+                "The continue flag does not support multiple activties running at once"
+            ))
+        }
+    };
+
+    Ok(closure)
+}
+
 pub fn start_editor(file_name: &str, optional_editor_command: Option<&str>) -> Result<()> {
     let editor_command = optional_editor_command.context("editor command is missing")?;
     let command = Command::new(editor_command).arg(file_name).spawn();
@@ -209,5 +277,153 @@ fn stop_all_running_activities(
                 line.set_changed();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{path::PathBuf, str::FromStr, time::Duration};
+
+    use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+    use temp_dir::TempDir;
+
+    use crate::data::bartib_file::{get_file_content, Line};
+
+    fn seed_test_file(
+        file_path: &str,
+        additional_seed_activities: Vec<(&str, &str, Option<NaiveDateTime>, Option<NaiveDateTime>)>,
+    ) -> Vec<Line> {
+        // Seed the temp file with random activities
+
+        let mut count = 0;
+
+        for i in 1..100 {
+            let project = format!("proj{i}");
+            let description = format!("desc{i}");
+            super::start(file_path, project.as_str(), description.as_str(), None).unwrap();
+            super::stop(file_path, None).unwrap();
+            count += 1;
+        }
+
+        // write additional activities for testing specific edge conditions
+        for activity in additional_seed_activities {
+            super::start(file_path, activity.0, activity.1, activity.2).unwrap();
+            super::stop(file_path, activity.3).unwrap();
+            count += 1;
+        }
+
+        let mut file_contents = get_file_content(file_path).unwrap();
+        let added_lines: Vec<Line> = file_contents
+            .drain((file_contents.len() - count)..)
+            .collect();
+        added_lines
+    }
+
+    #[test]
+    fn test_change() {
+        let temp_dir = TempDir::new().unwrap();
+        let temp_file = PathBuf::from(temp_dir.path()).join("temp.txt");
+        let temp_file_str = temp_file.to_str().unwrap();
+
+        let test_file_seed = seed_test_file(&temp_file_str, Vec::new());
+
+        // Check that simply changing the time correctly, and only, alters the currently running activity
+        super::start(&temp_file_str, "test_proj", "test_desc", None).unwrap();
+
+        let target_time = NaiveDateTime::new(
+            NaiveDate::from_isoywd_opt(2026, 10, chrono::Weekday::Mon).unwrap(),
+            NaiveTime::from_str("10:00").unwrap(),
+        );
+
+        let mut original_file_contents = get_file_content(&temp_file_str).unwrap();
+        original_file_contents.pop();
+
+        super::change(temp_file_str, None, None, Some(target_time)).unwrap();
+
+        let mut file_contents = get_file_content(&temp_file_str).unwrap();
+
+        let changed_activity = file_contents.pop().unwrap().activity.unwrap();
+
+        assert_eq!(&changed_activity.start, &target_time);
+        assert_eq!(test_file_seed, original_file_contents);
+    }
+
+    #[test]
+    fn test_change_whilst_affecting_prev() {
+        let temp_dir = TempDir::new().unwrap();
+        let temp_path = PathBuf::from(temp_dir.path()).join("temp_file.txt");
+        let temp_path_str = temp_path.to_str().unwrap();
+
+        let start_time = NaiveDateTime::new(
+            NaiveDate::from_ymd_opt(2026, 01, 02).unwrap(),
+            NaiveTime::from_num_seconds_from_midnight_opt(3600, 0).unwrap(),
+        );
+        let initial_finish = start_time + Duration::new(3600, 0);
+        let final_finish = start_time + Duration::new(7200, 0);
+
+        // write a project for the previous day which starts at the same time
+        // this should not be affected
+        let additional_seed_activities = vec![(
+            "yesterdays proj",
+            "",
+            Some(NaiveDateTime::new(
+                NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+                NaiveTime::from_num_seconds_from_midnight_opt(1200, 0).unwrap(),
+            )),
+            Some(NaiveDateTime::new(
+                NaiveDate::from_ymd_opt(2026, 01, 01).unwrap(),
+                NaiveTime::from_num_seconds_from_midnight_opt(3600, 0).unwrap(),
+            )),
+        )];
+
+        let file_seed = seed_test_file(&temp_path_str, additional_seed_activities);
+
+        super::start(
+            &temp_path_str,
+            "prev_proj",
+            "prev_proj_desc",
+            Some(start_time),
+        )
+        .unwrap();
+
+        super::start(
+            &temp_path_str,
+            "second_proj",
+            "second proj desc",
+            Some(initial_finish),
+        )
+        .unwrap();
+
+        super::change(&temp_path_str, None, None, Some(final_finish)).unwrap();
+
+        let mut file_contents = get_file_content(&temp_path_str).unwrap();
+        let test_activities: Vec<Line> = file_contents.split_off(file_contents.len() - 2);
+
+        println!("{test_activities:?}");
+
+        assert_eq!(
+            test_activities
+                .get(0)
+                .unwrap()
+                .activity
+                .as_ref()
+                .unwrap()
+                .end
+                .unwrap(),
+            final_finish
+        );
+
+        assert_eq!(
+            test_activities
+                .get(1)
+                .unwrap()
+                .activity
+                .as_ref()
+                .unwrap()
+                .start,
+            final_finish
+        );
+
+        assert_eq!(file_contents, file_seed);
     }
 }

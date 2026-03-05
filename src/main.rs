@@ -1,12 +1,16 @@
 use std::borrow::Borrow;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
+use bartib::controller::manipulation::return_continue_current_activity_closure;
 use bartib::view::status::StatusReport;
-use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime};
+use chrono::{Datelike, Duration, Local, NaiveDate, NaiveTime, Timelike};
 use clap::{crate_version, App, AppSettings, Arg, ArgMatches, SubCommand};
 
 use bartib::data::getter::ActivityFilter;
 use bartib::data::processor;
+use bartib::view::report::{
+    ReportGroup, ReportGroupDate, ReportGroupDescription, ReportGroupProject,
+};
 
 #[cfg(windows)]
 use nu_ansi_term::enable_ansi_support;
@@ -21,8 +25,9 @@ fn main() -> Result<()> {
         .short("t")
         .long("time")
         .value_name("TIME")
-        .help("the time for changing the activity status (HH:MM)")
-        .takes_value(true);
+        .help("the time for changing the activity status (accepted formats HH:MM, H:MM, HHMM, HMM. Decimal hours are also accepted)")
+        .takes_value(true)
+        .allow_hyphen_values(true);
 
     let arg_from_date = Arg::with_name("from_date")
         .long("from")
@@ -80,9 +85,16 @@ fn main() -> Result<()> {
         ])
         .takes_value(false);
 
-    let arg_group = Arg::with_name("round")
+    let arg_round = Arg::with_name("round")
         .long("round")
         .help("rounds the start and end time to the nearest duration. Durations can be in minutes or hours. E.g. 15m or 4h")
+        .required(false)
+        .takes_value(true);
+
+    let arg_group = Arg::with_name("group")
+        .long("group")
+        .short("g")
+        .help("Takes any combination of the following characters and groups the report with in the order sepecified\np - Project\nc - Calendar (Date)\nd - Description")
         .required(false)
         .takes_value(true);
 
@@ -91,7 +103,8 @@ fn main() -> Result<()> {
         .long("description")
         .value_name("DESCRIPTION")
         .help("the description of the new activity")
-        .takes_value(true);
+        .takes_value(true)
+        .default_value("");
 
     let arg_project = Arg::with_name("project")
         .short("p")
@@ -99,6 +112,14 @@ fn main() -> Result<()> {
         .value_name("PROJECT")
         .help("the project to which the new activity belongs")
         .takes_value(true);
+
+    let arg_continue = Arg::with_name("continue")
+    .short("c")
+    .long("continue")
+    .value_name("CONTINUE")
+    .help("applies the command and then restarts the currently active activity at the current time")
+    .requires("time")
+    .takes_value(false);
 
     let matches = App::new("bartib")
         .version(crate_version!())
@@ -121,7 +142,8 @@ To get started, view the `start` help with `bartib start --help`")
                 .about("starts a new activity")
                 .arg(arg_project.clone().required(true))
                 .arg(arg_description.clone().required(true))
-                .arg(&arg_time),
+                .arg(&arg_time)
+            .arg(&arg_continue),
         )
         .subcommand(
             SubCommand::with_name("continue")
@@ -148,7 +170,8 @@ To get started, view the `start` help with `bartib start --help`")
         .subcommand(
             SubCommand::with_name("stop")
                 .about("stops all currently running activities")
-                .arg(&arg_time),
+                .arg(&arg_time)
+             .arg(&arg_continue) ,
         )
         .subcommand(
             SubCommand::with_name("cancel").about("cancels all currently running activities"),
@@ -166,7 +189,7 @@ To get started, view the `start` help with `bartib start --help`")
                 .arg(&arg_yesterday)
                 .arg(&arg_current_week)
                 .arg(&arg_last_week)
-                .arg(&arg_group)
+                .arg(&arg_round)
                 .arg(
                     Arg::with_name("project")
                         .short("p")
@@ -201,7 +224,7 @@ To get started, view the `start` help with `bartib start --help`")
                 .arg(&arg_yesterday)
                 .arg(&arg_current_week)
                 .arg(&arg_last_week)
-                .arg(&arg_group)
+                .arg(&arg_round)
                 .arg(
                     Arg::with_name("project")
                         .short("p")
@@ -210,7 +233,8 @@ To get started, view the `start` help with `bartib start --help`")
                         .help("do report activities for this project only")
                         .takes_value(true)
                         .required(false),
-                ),
+                )
+                .arg(&arg_group),
         )
         .subcommand(
             SubCommand::with_name("last")
@@ -296,20 +320,28 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("start", Some(sub_m)) => {
             let project_name = sub_m.value_of("project").unwrap();
             let activity_description = sub_m.value_of("description").unwrap();
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
+
+            let continue_closure = return_continue_current_activity_closure(&file_name);
 
             bartib::controller::manipulation::start(
                 file_name,
                 project_name,
                 activity_description,
                 time,
-            )
+            )?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("change", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
             let activity_description = sub_m.value_of("description");
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
 
             bartib::controller::manipulation::change(
@@ -322,7 +354,7 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("continue", Some(sub_m)) => {
             let project_name = sub_m.value_of("project");
             let activity_description = sub_m.value_of("description");
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
             let number =
                 get_number_argument_or_ignore(sub_m.value_of("number"), "-n/--number").unwrap_or(0);
@@ -336,10 +368,18 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
             )
         }
         ("stop", Some(sub_m)) => {
-            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")
+            let time = get_time_argument_or_ignore(sub_m.value_of("time"), "-t/--time")?
                 .map(|t| Local::now().date_naive().and_time(t));
 
-            bartib::controller::manipulation::stop(file_name, time)
+            let continue_closure = return_continue_current_activity_closure(&file_name);
+
+            bartib::controller::manipulation::stop(file_name, time)?;
+
+            if sub_m.is_present("continue") {
+                continue_closure?()
+            } else {
+                Ok(())
+            }
         }
         ("cancel", Some(_)) => bartib::controller::manipulation::cancel(file_name),
         ("current", Some(_)) => bartib::controller::list::list_running(file_name),
@@ -352,7 +392,8 @@ fn run_subcommand(matches: &ArgMatches, file_name: &str) -> Result<()> {
         ("report", Some(sub_m)) => {
             let filter = create_filter_for_arguments(sub_m);
             let processors = create_processors_for_arguments(sub_m);
-            bartib::controller::report::show_report(file_name, filter, processors)
+            let groups = get_group_argument_or_pd(sub_m.value_of("group"), "group")?;
+            bartib::controller::report::show_report(file_name, filter, processors, groups)
         }
         ("projects", Some(sub_m)) => bartib::controller::list::list_projects(
             file_name,
@@ -490,21 +531,77 @@ fn get_date_argument_or_ignore(
 fn get_time_argument_or_ignore(
     time_argument: Option<&str>,
     argument_name: &str,
-) -> Option<NaiveTime> {
+) -> Result<Option<NaiveTime>> {
     if let Some(time_string) = time_argument {
-        let parsing_result = NaiveTime::parse_from_str(time_string, bartib::conf::FORMAT_TIME);
+        let mut time_string = String::from(time_string);
+
+        // build an optional closure if the user has entered a relative time
+        let current_time = Local::now().naive_local().time();
+        let relative_time_closure: Option<Box<dyn Fn(NaiveTime) -> NaiveTime>> =
+            if time_string.starts_with('-') {
+                Some(Box::new(|time: NaiveTime| {
+                    current_time + Duration::seconds(time.num_seconds_from_midnight() as i64 * -1)
+                }))
+            } else if time_string.starts_with('+') {
+                Some(Box::new(|time: NaiveTime| {
+                    current_time + Duration::seconds(time.num_seconds_from_midnight() as i64)
+                }))
+            } else {
+                None
+            };
+
+        // if there is a relative time enclosure, it means the user has entered a relative time
+        // remove the +/- prefix to allow subsequent time parsing to proceed
+        match relative_time_closure {
+            Some(_) => {
+                time_string.remove(0);
+
+                // if it is a relative time, decimal hours are allowed, so convert to HH::MM
+                if time_string.contains('.') {
+                    let (hours, decimal_minutes) = time_string.split_once('.').map_or(
+                        Err(anyhow!("Failed to parse relative time at delimeter")),
+                        |val| Ok(val),
+                    )?;
+                    let decimal_minutes = format!("0.{decimal_minutes}");
+                    let minutes = decimal_minutes.parse::<f64>()? * 60.0;
+
+                    let minutes_string = minutes.to_string();
+                    time_string = format!("{hours}:{minutes_string}");
+                }
+                ()
+            }
+            None => (),
+        }
+
+        if !time_string.contains(":") && time_string.len() >= 3 {
+            // The time does not contain a colon, but might still be a valid time
+            // add a colon before the minutes
+            // this assumes that the time is provided in either HHMM or HMM
+            // a single digit for minutes is not supported, nor handled
+            time_string.insert(time_string.len() - 2, ':');
+        }
+
+        // parse the user entered time
+        let parsing_result =
+            NaiveTime::parse_from_str(&time_string.as_str(), bartib::conf::FORMAT_TIME).map(
+                |time| {
+                    if let Some(relative_time_closure) = relative_time_closure {
+                        relative_time_closure(time)
+                    } else {
+                        time
+                    }
+                },
+            );
 
         match parsing_result {
-            Ok(date) => Some(date),
-            Err(parsing_error) => {
-                println!(
-                    "Can not parse \"{time_string}\" as time. Argument for {argument_name} is ignored ({parsing_error})"
-                );
-                None
-            }
+            Ok(date) => Ok(Some(date)),
+            Err(_parsing_error) => Err(anyhow!(
+                "Can not parse \"{time_string}\" as time. Argument for {argument_name}"
+            )),
         }
     } else {
-        None
+        // no time string provided
+        Ok(None)
     }
 }
 
@@ -533,5 +630,123 @@ fn get_duration_argument_or_ignore(
         }
     } else {
         None
+    }
+}
+
+fn get_group_argument_or_pd(
+    group_argument: Option<&str>,
+    argument_name: &str,
+) -> Result<Vec<Box<dyn ReportGroup>>> {
+    let mut groups: Vec<Box<dyn ReportGroup>> = Vec::new();
+
+    if let Some(group_string) = group_argument {
+        for char in group_string.as_bytes().to_ascii_lowercase() {
+            match char {
+                b'p' => groups.push(Box::new(ReportGroupProject)),
+                b'd' => groups.push(Box::new(ReportGroupDescription)),
+                b'c' => groups.push(Box::new(ReportGroupDate)),
+                _ => {
+                    let char = String::from_utf8(vec![char])?;
+                    return Err(anyhow!(
+                        "'{}' is not a valid argument for {}",
+                        char,
+                        argument_name
+                    ));
+                }
+            }
+        }
+        Ok(groups)
+    } else {
+        Ok(vec![
+            Box::new(ReportGroupProject),
+            Box::new(ReportGroupDescription),
+        ])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::str::FromStr;
+
+    use chrono::{Duration, Local, NaiveTime};
+
+    use crate::get_time_argument_or_ignore;
+
+    #[test]
+    fn test_parse_time() {
+        assert!(get_time_argument_or_ignore(Some(""), "argument_name").is_err());
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("10:00"), "argument_name").unwrap(),
+            Some(NaiveTime::from_str("10:00").unwrap())
+        );
+
+        assert!(get_time_argument_or_ignore(Some("jkhkj"), "argument_name").is_err());
+
+        assert!(get_time_argument_or_ignore(None, "argument_name")
+            .unwrap()
+            .is_none());
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("1000"), "argument_name").unwrap(),
+            Some(NaiveTime::from_str("10:00").unwrap())
+        );
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("900"), "argument_name").unwrap(),
+            Some(NaiveTime::from_str("09:00").unwrap())
+        );
+
+        assert_eq!(
+            get_time_argument_or_ignore(Some("9:00"), "argument_name").unwrap(),
+            Some(NaiveTime::from_str("09:00").unwrap())
+        );
+
+        // 0 - input string
+        // 1 - relative duration
+        // 2 - true = positive, false = negative
+        // 3 - test inputs should return error
+        let relative_time_tests = [
+            ("+1:00", Duration::hours(1), true, false),
+            ("-1:00", Duration::hours(1), false, false),
+            ("+1:30", Duration::seconds(5400), true, false),
+            ("+01:30", Duration::seconds(5400), true, false),
+            ("+130", Duration::seconds(5400), true, false),
+            ("+0130", Duration::seconds(5400), true, false),
+            ("+1.5", Duration::seconds(5400), true, false),
+            ("+1.50", Duration::seconds(5400), true, false),
+            ("+1.500", Duration::seconds(5400), true, false),
+            ("+1.", Duration::hours(1), true, false),
+            ("+1.5sdf", Duration::seconds(5400), true, true),
+        ];
+
+        for test in relative_time_tests {
+            let approx_current_time = Local::now().naive_local().time();
+            let time_delta = test.1;
+            let target_time;
+            if test.2 {
+                target_time = approx_current_time + time_delta;
+            } else {
+                target_time = approx_current_time - time_delta;
+            }
+
+            if test.3 {
+                assert!(
+                    get_time_argument_or_ignore(Some(test.0), "argument_name").is_err(),
+                    "{:?}",
+                    test
+                )
+            } else {
+                assert_eq!(
+                    get_time_argument_or_ignore(Some(test.0), "argument_name")
+                        .unwrap()
+                        .unwrap()
+                        .signed_duration_since(target_time)
+                        .num_seconds(),
+                    0i64,
+                    "{test:?}"
+                )
+            }
+        }
     }
 }

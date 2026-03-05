@@ -10,6 +10,7 @@ pub fn show_report(
     file_name: &str,
     filter: getter::ActivityFilter,
     processors: processor::ProcessorList,
+    groups: Vec<Box<dyn report::ReportGroup>>
 ) -> Result<()> {
     let file_content = bartib_file::get_file_content(file_name)?;
     let activities = getter::get_activities(&file_content).collect();
@@ -29,7 +30,7 @@ pub fn show_report(
             .unwrap_or(filtered_activities.len()),
     );
 
-    report::show_activities(&filtered_activities[first_element..filtered_activities.len()]);
+    report::show_activities(&filtered_activities[first_element..filtered_activities.len()], groups);
 
     Ok(())
 }
