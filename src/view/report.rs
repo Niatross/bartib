@@ -80,7 +80,7 @@ struct ReportLineItem {
 impl ReportLineItem {
     fn as_string(&self, longest_line_info: &LongestLineInfo) -> String {
         format!(
-            "{indent}{name:.<name_width$}\t{duration:>duration_width$} ({hours}.{minutes})",
+            "{indent}{name:.<name_width$}\t{duration:>duration_width$} ({hours}.{minutes:>02})",
             indent = " ".repeat(self.indent * 2),
             name = self.name,
             duration = format_util::format_duration(&self.duration),
